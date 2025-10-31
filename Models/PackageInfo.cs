@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
@@ -16,6 +17,24 @@ namespace PackageManager.Models
     /// </summary>
     public class PackageInfo : INotifyPropertyChanged
     {
+        /// <summary>
+        /// 静态数据持久化服务实例，用于获取设置
+        /// </summary>
+        public static DataPersistenceService DataPersistenceService { get; set; }
+
+        /// <summary>
+        /// 获取配置的Addin路径
+        /// </summary>
+        private static string GetAddinPath()
+        {
+            if (DataPersistenceService != null)
+            {
+                var settings = DataPersistenceService.LoadSettings();
+                return settings.AddinPath;
+            }
+            return @"C:\ProgramData\Autodesk\Revit\Addins"; // 默认路径
+        }
+
         private string _productName;
         private string _version;
         private string _ftpServerPath;
@@ -27,7 +46,7 @@ namespace PackageManager.Models
         private ObservableCollection<string> _availableVersions;
         private ObservableCollection<string> _availablePackages;
         private ICommand _updateCommand;
-        private ObservableCollection<string> _availableExecutableVersions;
+        private ObservableCollection<ApplicationVersion> _availableExecutableVersions;
         private string _selectedExecutableVersion;
         private string _executablePath;
         private ICommand _openPathCommand;
@@ -146,7 +165,9 @@ namespace PackageManager.Models
         /// <summary>
         /// 可执行文件版本
         /// </summary>
-        [DataGridComboBox(9, "可执行版本", "AvailableExecutableVersions", Width = "150", IsReadOnlyProperty = "IsReadOnly")]
+        [DataGridComboBox(9, "可执行版本", "AvailableExecutableVersions", Width = "150", IsReadOnlyProperty = "IsReadOnly",
+                          ComboBoxDisplayMemberPath = "DisPlayName",
+                          ComboBoxSelectedValuePath = "DisPlayName")]
         public string SelectedExecutableVersion
         {
             get => _selectedExecutableVersion;
@@ -224,9 +245,9 @@ namespace PackageManager.Models
         /// <summary>
         /// 可用可执行文件版本列表
         /// </summary>
-        public ObservableCollection<string> AvailableExecutableVersions
+        public ObservableCollection<ApplicationVersion> AvailableExecutableVersions
         {
-            get => _availableExecutableVersions ?? (_availableExecutableVersions = new ObservableCollection<string>());
+            get => _availableExecutableVersions ?? (_availableExecutableVersions = new ObservableCollection<ApplicationVersion>());
             set => SetProperty(ref _availableExecutableVersions, value);
         }
 
@@ -329,12 +350,66 @@ namespace PackageManager.Models
         /// </summary>
         private void ExecuteOpenPath()
         {
+            ApplicationVersion applicationVersion = AvailableExecutableVersions.FirstOrDefault(x => x.DisPlayName == SelectedExecutableVersion);
+            if (applicationVersion == null)
+            {
+                return;
+            }
+            ExecutablePath = applicationVersion.ExecutablePath;
             if (!string.IsNullOrEmpty(ExecutablePath) && System.IO.File.Exists(ExecutablePath))
             {
                 try
                 {
+                    //配置Addin文件
+                    string defaultAddinDir = GetAddinPath();
+                    if (!Directory.Exists(defaultAddinDir))
+                    {
+                        return;
+                    }
+                    
+                    string version = applicationVersion.Version;
+                    string addinDir = Path.Combine(defaultAddinDir, version);
+                    
+                    string binDir = Path.Combine(LocalPath, "bin");
+                    
+                    // 查找bin目录下所有dll文件，找出以G开头、包含版本号、以.dll结尾的文件，并复制其完整路径
+                    if (Directory.Exists(binDir))
+                    {
+                    
+                        var targetFiles = Directory.GetFiles(binDir, "*.dll")
+                            .Where(file => Path.GetFileName(file).StartsWith("G") && Path.GetFileName(file).Contains(version))
+                            .ToList().FirstOrDefault();
+
+                        if (!string.IsNullOrEmpty(targetFiles))
+                        {
+                            string addinFile = Directory.GetFiles(LocalPath, "*.addin").FirstOrDefault();
+                            if (!string.IsNullOrEmpty(addinFile))
+                            {
+                                string addinStr = string.Empty;
+                                using (StreamReader streamReader = new StreamReader(new FileStream(addinFile, FileMode.Open)))
+                                {
+                                    addinStr = streamReader.ReadToEnd();
+                                    
+                                    //找出<Assembly>C:\红瓦科技\MaxiBIM（PMEP）Develop\GHWPMEP4RevitEntry.dll</Assembly>匹配的内容，进行替换
+                                    string assemblyPattern = @"<Assembly>(.*?)</Assembly>";
+                                    Match match = Regex.Match(addinStr, assemblyPattern);
+                                    if (match.Success)
+                                    {
+                                        string assemblyPath = match.Groups[1].Value;
+                                        addinStr = addinStr.Replace(assemblyPath, targetFiles);
+                                    }
+                                }
+                                
+                                File.WriteAllText(addinFile, addinStr);
+                                        
+                                string addinFilePath = Path.Combine(addinDir, Path.GetFileName(addinFile));
+                                File.Copy(addinFile, addinFilePath, true);
+                            }
+                        }
+                    }
+                    
                     // 打开文件所在的文件夹并选中该文件
-                    System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{ExecutablePath}\"");
+                    System.Diagnostics.Process.Start(ExecutablePath);
                 }
                 catch (Exception ex)
                 {

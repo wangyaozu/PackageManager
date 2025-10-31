@@ -31,10 +31,15 @@ namespace PackageManager
         public MainWindow()
         {
             InitializeComponent();
+            
             _updateService = new PackageUpdateService();
             _ftpService = new FtpService();
             _applicationFinderService = new ApplicationFinderService();
             _dataPersistenceService = new DataPersistenceService();
+            
+            // 设置PackageInfo的静态DataPersistenceService引用
+            PackageInfo.DataPersistenceService = _dataPersistenceService;
+            
             DataContext = this;
             InitializePackages();
             Loaded += MainWindow_Loaded;
@@ -67,7 +72,10 @@ namespace PackageManager
                         {
                             foreach (PackageInfo packageInfo in Packages)
                             {
-                                UpdatePackageExecutableVersions(packageInfo, cachedVersions);
+                                if (packageInfo.AvailableExecutableVersions.Count == 0 || string.IsNullOrEmpty(packageInfo.SelectedExecutableVersion))
+                                {
+                                    UpdatePackageExecutableVersions(packageInfo, cachedVersions);
+                                }
                             }
                         });
                     }
@@ -108,32 +116,31 @@ namespace PackageManager
             
             foreach (var version in versions)
             {
-                var displayName = string.IsNullOrEmpty(version.Version) 
-                    ? $"{version.Name}" 
-                    : $"{version.Name} {version.Version}";
-                package.AvailableExecutableVersions.Add(displayName);
+                package.AvailableExecutableVersions.Add(version);
             }
 
             // 设置默认选择第一个版本
             if (package.AvailableExecutableVersions.Any())
             {
-                package.SelectedExecutableVersion = package.AvailableExecutableVersions.First();
+                package.SelectedExecutableVersion = package.AvailableExecutableVersions.First().DisPlayName;
                 var firstVersion = versions.First();
                 package.ExecutablePath = firstVersion.ExecutablePath;
             }
+        }
 
-            // 监听版本选择变化
-            package.PropertyChanged += (sender, e) =>
+        /// <summary>
+        /// 保存当前状态
+        /// </summary>
+        private void SaveCurrentState()
+        {
+            try
             {
-                if (e.PropertyName == nameof(PackageInfo.SelectedExecutableVersion))
-                {
-                    var selectedIndex = package.AvailableExecutableVersions.IndexOf(package.SelectedExecutableVersion);
-                    if (selectedIndex >= 0 && selectedIndex < versions.Count)
-                    {
-                        package.ExecutablePath = versions[selectedIndex].ExecutablePath;
-                    }
-                }
-            };
+                _dataPersistenceService.SaveMainWindowState(Packages);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存当前状态失败: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -143,7 +150,8 @@ namespace PackageManager
         {
             try
             {
-                // 这里可以添加额外的保存逻辑，目前数据已经在查找时保存了
+                // 保存主界面状态
+                SaveCurrentState();
                 System.Diagnostics.Debug.WriteLine("应用程序正在关闭，数据已保存");
             }
             catch (Exception ex)
@@ -301,6 +309,23 @@ namespace PackageManager
                 package.VersionChanged += OnPackageVersionChanged;
                 package.DownloadRequested += OnPackageDownloadRequested;
             }
+            
+            if (_dataPersistenceService.HasMainWindowState())
+            {
+                var stateData = _dataPersistenceService.LoadMainWindowState();
+                if (stateData?.Packages != null)
+                {
+                    for (var index = 0; index < Packages.Count; index++)
+                    {
+                        var package = Packages[index];
+                        var savedState = stateData.Packages[index];
+                        if (savedState != null)
+                        {
+                            _dataPersistenceService.ApplyStateToPackage(package, savedState);
+                        }
+                    }
+                }
+            }
         }
         
         private async void OnPackageDownloadRequested(PackageInfo packageInfo)
@@ -416,6 +441,56 @@ namespace PackageManager
             catch (Exception ex)
             {
                 package.StatusText = $"加载版本包列表失败: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 设置按钮点击事件
+        /// </summary>
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var settingsWindow = new SettingsWindow(_dataPersistenceService);
+                settingsWindow.Owner = this;
+                settingsWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开设置窗口失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 清除数据按钮点击事件
+        /// </summary>
+        private void ClearDataButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "确定要清除所有保存的数据吗？\n这将删除：\n- 主界面状态数据\n- 应用程序缓存数据\n- 用户设置数据\n\n此操作不可撤销！", 
+                    "确认清除数据", 
+                    MessageBoxButton.YesNo, 
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    _dataPersistenceService.ClearMainWindowState();
+                    _dataPersistenceService.ClearAllCachedData();
+                    _dataPersistenceService.ClearSettings();
+                    
+                    StatusText.Text ="所有数据已清除";
+                    
+                    MessageBox.Show("数据清除完成！\n建议重启应用程序以确保所有更改生效。", 
+                                  "清除完成", 
+                                  MessageBoxButton.OK, 
+                                  MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"清除数据失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

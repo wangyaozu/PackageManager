@@ -56,6 +56,7 @@
             <Generator>MSBuild:Compile</Generator>
             <SubType>Designer</SubType>
         </ApplicationDefinition>
+        <Compile Include="SettingsWindow.xaml.cs" />
         <Page Include="MainWindow.xaml">
             <Generator>MSBuild:Compile</Generator>
             <SubType>Designer</SubType>
@@ -74,6 +75,7 @@
         <Compile Include="Services\FtpService.cs" />
         <Compile Include="Services\PackageUpdateService.cs" />
         <Compile Include="Converters\StatusConverters.cs" />
+        <Page Include="SettingsWindow.xaml" />
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Properties\AssemblyInfo.cs">

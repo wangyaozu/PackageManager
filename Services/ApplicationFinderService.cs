@@ -17,6 +17,10 @@ namespace PackageManager.Services
         public string Version { get; set; }
         public string ExecutablePath { get; set; }
         public string InstallPath { get; set; }
+
+        public string DisPlayName => ToString();
+
+        
         
         public override string ToString()
         {
