@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:PackageManager"
         xmlns:hw="clr-namespace:CustomControlLibrary.CustomControl.Controls.DataGrid;assembly=CustomControlLibrary"
         mc:Ignorable="d"
-        Title="包管理器" Height="700" Width="1500" 
+        Title="包管理器" Height="700" Width="1750" 
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <local:StatusToVisibilityConverter x:Key="StatusToVisibilityConverter"/>
@@ -28,12 +28,10 @@
         
         <!-- 包列表 -->
         <hw:HwDataGrid x:Name="PackageDataGrid" Grid.Row="1"
-                       EnableAutoTemplateSelection="True"
                        TextAlignment="Left"
+                       EnableAutoTemplateSelection="True"
                        ItemsSource="{Binding Packages}"
-                       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                       SelectionMode="Single" GridLinesVisibility="All"
-                       HeadersVisibility="Column" Margin="10">
+                       Margin="10">
         </hw:HwDataGrid>
         
         <!-- 状态栏 -->

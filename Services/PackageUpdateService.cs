@@ -35,7 +35,7 @@ namespace PackageManager.Services
                 var tempFilePath = Path.Combine(tempDir, $"{packageInfo.ProductName}.zip");
 
                 // 下载文件
-                var success = await DownloadFileAsync(packageInfo.FtpServerPath, tempFilePath, 
+                var success = await DownloadFileAsync(packageInfo.DownloadUrl, tempFilePath, 
                     (progress) => {
                         packageInfo.Progress = progress * 0.8; // 下载占80%进度
                         progressCallback?.Invoke(progress * 0.8, $"下载中... {progress:F1}%");

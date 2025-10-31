@@ -4,7 +4,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
+using System.Windows.Input;
 using CustomControlLibrary.CustomControl.Attribute.DataGrid;
+using PackageManager.Services;
 
 namespace PackageManager.Models
 {
@@ -20,8 +23,17 @@ namespace PackageManager.Models
         private PackageStatus _status;
         private double _progress;
         private string _statusText;
-        private string _uploadTime;
+        private string uploadPackageName;
         private ObservableCollection<string> _availableVersions;
+        private ObservableCollection<string> _availablePackages;
+        private ICommand _updateCommand;
+        private ObservableCollection<string> _availableExecutableVersions;
+        private string _selectedExecutableVersion;
+        private string _executablePath;
+        private ICommand _openPathCommand;
+        private bool _isReadOnly;
+
+        private string time;
 
         /// <summary>
         /// 产品名称
@@ -36,21 +48,64 @@ namespace PackageManager.Models
         /// <summary>
         /// 当前版本
         /// </summary>
-        [DataGridComboBox(2, "版本", "AvailableVersions",Width = "120")]
+        [DataGridComboBox(2, "版本", "AvailableVersions",Width = "120", IsReadOnlyProperty = "IsReadOnly")]
         public string Version
         {
             get => _version;
-            set => SetProperty(ref _version, value);
+            set 
+            {
+                if (SetProperty(ref _version, value))
+                {
+                    OnPropertyChanged(nameof(DownloadUrl));
+                    VersionChanged?.Invoke(this, value);
+                }
+            }
+        }
+
+        [DataGridColumn(4, DisplayName = "时间", Width = "150",IsReadOnly = true)]
+        public string Time
+        {
+            get 
+            {
+                // 从UploadPackageName中解析时间
+                if (!string.IsNullOrEmpty(UploadPackageName))
+                {
+                    var parsedTime = FtpService.ParseTimeFromFileName(UploadPackageName);
+                    if (parsedTime != DateTime.MinValue)
+                    {
+                        return parsedTime.ToString("yyyy-MM-dd HH:mm");
+                    }
+                }
+                return time;
+            }
+
+            set
+            {
+                if (value == time)
+                {
+                    return;
+                }
+
+                time = value;
+                OnPropertyChanged();
+            }
         }
 
         /// <summary>
         /// FTP服务器路径
         /// </summary>
-        [DataGridColumn(4, DisplayName = "FTP服务器路径", Width = "350",IsReadOnly = true)]
+
+        // [DataGridColumn(4, DisplayName = "FTP服务器路径", Width = "350",IsReadOnly = true)]
         public string FtpServerPath
         {
             get => _ftpServerPath;
-            set => SetProperty(ref _ftpServerPath, value);
+            set 
+            {
+                if (SetProperty(ref _ftpServerPath, value))
+                {
+                    OnPropertyChanged(nameof(DownloadUrl));
+                }
+            }
         }
 
         /// <summary>
@@ -73,19 +128,36 @@ namespace PackageManager.Models
             set => SetProperty(ref _status, value);
         }
         
-        [DataGridColumn(7, DisplayName = "操作" ,Width = "150", ControlType = "Button", ButtonText = "操作", ButtonWidth = 100, ButtonHeight = 26 )]
+        [DataGridButton(7, DisplayName = "操作" ,Width = "150", ControlType = "Button", ButtonText = "更新", ButtonWidth = 100, ButtonHeight = 26, ButtonCommandProperty = "UpdateCommand", IsReadOnlyProperty = "IsReadOnly")]
         public string DoWork { get; set; }
         
 
         /// <summary>
         /// 下载进度 (0-100)
         /// </summary>
-        [DataGridColumn(8, DisplayName = "进度", Width = "120")]
+        [DataGridProgressBar(8, 0,100,DisplayName = "进度", Width = "120",
+                         ProgressBarWidth = 100, ProgressBarHeight = 20, TextFormat = "{0:F1}%")]
         public double Progress
         {
             get => _progress;
             set => SetProperty(ref _progress, value);
         }
+
+        /// <summary>
+        /// 可执行文件版本
+        /// </summary>
+        [DataGridComboBox(9, "可执行版本", "AvailableExecutableVersions", Width = "150", IsReadOnlyProperty = "IsReadOnly")]
+        public string SelectedExecutableVersion
+        {
+            get => _selectedExecutableVersion;
+            set => SetProperty(ref _selectedExecutableVersion, value);
+        }
+
+        /// <summary>
+        /// 打开路径按钮
+        /// </summary>
+        [DataGridButton(10, DisplayName = "打开路径", Width = "100", ControlType = "Button", ButtonText = "打开", ButtonWidth = 80, ButtonHeight = 26, ButtonCommandProperty = "OpenPathCommand", IsReadOnlyProperty = "IsReadOnly")]
+        public string OpenPath { get; set; }
 
         /// <summary>
         /// 状态文本
@@ -97,13 +169,38 @@ namespace PackageManager.Models
         }
 
         /// <summary>
-        /// 包上传时间
+        /// 可执行文件路径
         /// </summary>
-        [DataGridColumn(3, DisplayName = "上传时间", Width = "150")]
-        public string UploadTime
+        public string ExecutablePath
         {
-            get => _uploadTime;
-            set => SetProperty(ref _uploadTime, value);
+            get => _executablePath;
+            set => SetProperty(ref _executablePath, value);
+        }
+
+        /// <summary>
+        /// 是否为只读状态（更新时不可编辑）
+        /// </summary>
+        public bool IsReadOnly
+        {
+            get => _isReadOnly;
+            set => SetProperty(ref _isReadOnly, value);
+        }
+
+        /// <summary>
+        /// 包名
+        /// </summary>
+        [DataGridComboBox(3, "包名","AvailablePackages", Width = "320", IsReadOnlyProperty = "IsReadOnly")]
+        public string UploadPackageName
+        {
+            get => uploadPackageName;
+            set 
+            {
+                if (SetProperty(ref uploadPackageName, value))
+                {
+                    OnPropertyChanged(nameof(DownloadUrl));
+                    OnPropertyChanged(nameof(Time)); // 通知Time属性更新
+                }
+            }
         }
 
         /// <summary>
@@ -113,6 +210,62 @@ namespace PackageManager.Models
         {
             get => _availableVersions ?? (_availableVersions = new ObservableCollection<string>());
             set => SetProperty(ref _availableVersions, value);
+        }
+        
+        /// <summary>
+        /// 可用包列表
+        /// </summary>
+        public ObservableCollection<string> AvailablePackages
+        {
+            get => _availablePackages ?? (_availablePackages = new ObservableCollection<string>());
+            set => SetProperty(ref _availablePackages, value);
+        }
+
+        /// <summary>
+        /// 可用可执行文件版本列表
+        /// </summary>
+        public ObservableCollection<string> AvailableExecutableVersions
+        {
+            get => _availableExecutableVersions ?? (_availableExecutableVersions = new ObservableCollection<string>());
+            set => SetProperty(ref _availableExecutableVersions, value);
+        }
+
+        /// <summary>
+        /// 更新操作命令
+        /// </summary>
+        public ICommand UpdateCommand
+        {
+            get => _updateCommand ?? (_updateCommand = new RelayCommand(ExecuteDownload));
+            set => SetProperty(ref _updateCommand, value);
+        }
+
+        /// <summary>
+        /// 打开路径命令
+        /// </summary>
+        public ICommand OpenPathCommand
+        {
+            get => _openPathCommand ?? (_openPathCommand = new RelayCommand(ExecuteOpenPath));
+            set => SetProperty(ref _openPathCommand, value);
+        }
+
+        /// <summary>
+        /// 完整的下载地址（FTP路径 + 版本 + 上传时间）
+        /// </summary>
+        public string DownloadUrl
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(FtpServerPath) || 
+                    string.IsNullOrEmpty(Version) || 
+                    string.IsNullOrEmpty(UploadPackageName))
+                {
+                    return string.Empty;
+                }
+
+                // 组合完整的下载地址
+                var basePath = FtpServerPath.TrimEnd('/');
+                return $"{basePath}/{Version}/{UploadPackageName}";
+            }
         }
 
         /// <summary>
@@ -133,6 +286,76 @@ namespace PackageManager.Models
                 Version = AvailableVersions.Last();
             }
         }
+
+        /// <summary>
+        /// 更新可用包列表（上传时间）
+        /// </summary>
+        /// <param name="packages">包列表</param>
+        public void UpdateAvailablePackages(IEnumerable<string> packages)
+        {
+            AvailablePackages.Clear();
+            foreach (var package in packages)
+            {
+                AvailablePackages.Add(package);
+            }
+
+            // 如果有包且当前上传时间为空，则选择最后一个包
+            if (AvailablePackages.Count > 0 && string.IsNullOrEmpty(UploadPackageName))
+            {
+                UploadPackageName = AvailablePackages.Last();
+            }
+        }
+
+        /// <summary>
+        /// 执行更新操作
+        /// </summary>
+        private void ExecuteUpdate()
+        {
+            // 触发更新事件，由MainWindow处理具体的更新逻辑
+            UpdateRequested?.Invoke(this);
+        }
+        
+        /// <summary>
+        /// 执行下载替换
+        /// </summary>
+        private void ExecuteDownload()
+        {
+            // 触发更新事件，由MainWindow处理具体的更新逻辑
+            DownloadRequested?.Invoke(this);
+        }
+
+        /// <summary>
+        /// 执行打开路径操作
+        /// </summary>
+        private void ExecuteOpenPath()
+        {
+            if (!string.IsNullOrEmpty(ExecutablePath) && System.IO.File.Exists(ExecutablePath))
+            {
+                try
+                {
+                    // 打开文件所在的文件夹并选中该文件
+                    System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{ExecutablePath}\"");
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show($"无法打开路径: {ex.Message}", "错误", 
+                        System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                }
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("可执行文件路径无效或文件不存在", "提示", 
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>
+        /// 更新请求事件
+        /// </summary>
+        public event Action<PackageInfo> UpdateRequested;
+        public event Action<PackageInfo, string> VersionChanged;
+        
+        public event Action<PackageInfo> DownloadRequested;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -175,5 +398,36 @@ namespace PackageManager.Models
         /// 错误
         /// </summary>
         Error
+    }
+
+    /// <summary>
+    /// 简单的RelayCommand实现
+    /// </summary>
+    public class RelayCommand : ICommand
+    {
+        private readonly Action _execute;
+        private readonly Func<bool> _canExecute;
+
+        public RelayCommand(Action execute, Func<bool> canExecute = null)
+        {
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            _canExecute = canExecute;
+        }
+
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
+
+        public bool CanExecute(object parameter)
+        {
+            return _canExecute?.Invoke() ?? true;
+        }
+
+        public void Execute(object parameter)
+        {
+            _execute();
+        }
     }
 }

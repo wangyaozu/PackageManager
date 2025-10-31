@@ -49,4 +49,30 @@ namespace PackageManager
             throw new NotImplementedException();
         }
     }
+
+    /// <summary>
+    /// 布尔值反转转换器 - 用于将IsReadOnly转换为IsEnabled
+    /// </summary>
+    public class BooleanToInverseBooleanConverter : IValueConverter
+    {
+        public static readonly BooleanToInverseBooleanConverter Instance = new BooleanToInverseBooleanConverter();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool boolValue)
+            {
+                return !boolValue;
+            }
+            return true; // 默认启用
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool boolValue)
+            {
+                return !boolValue;
+            }
+            return false;
+        }
+    }
 }
