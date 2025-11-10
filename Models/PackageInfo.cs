@@ -143,9 +143,8 @@ namespace PackageManager.Models
         }
 
         /// <summary>
-        /// 本地包路径
+        /// 本地包路径（从主界面表格中移除显示，改由专用窗口设置）
         /// </summary>
-        [DataGridColumn(5, DisplayName = "本地包路径", Width = "280")]
         public string LocalPath
         {
             get => _localPath;

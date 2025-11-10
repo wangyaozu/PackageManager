@@ -26,6 +26,7 @@
             <Button Name="RefreshButton" Content="刷新列表" Margin="20,0,0,0" Padding="10,5" Click="RefreshButton_Click"/>
             <Button Name="SettingsButton" Content="设置" Margin="10,0,0,0" Padding="10,5" Click="SettingsButton_Click"/>
             <Button Name="ClearDataButton" Content="清除数据" Margin="10,0,0,0" Padding="10,5" Click="ClearDataButton_Click"/>
+            <Button Name="LocalPathSettingsButton" Content="路径设置" Margin="10,0,0,0" Padding="10,5" Click="LocalPathSettingsButton_Click"/>
         </StackPanel>
         
         <!-- 包列表 -->

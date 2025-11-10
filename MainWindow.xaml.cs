@@ -463,6 +463,31 @@ namespace PackageManager
         }
 
         /// <summary>
+        /// 打开本地包路径设置窗口
+        /// </summary>
+        private void LocalPathSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var win = new LocalPathSettingsWindow(_dataPersistenceService, Packages)
+                {
+                    Owner = this
+                };
+                var result = win.ShowDialog();
+                if (result == true)
+                {
+                    // 保存主界面状态（包含LocalPath）
+                    _dataPersistenceService.SaveMainWindowState(Packages);
+                    StatusText.Text = "本地路径设置已保存";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开路径设置窗口失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
         /// 清除数据按钮点击事件
         /// </summary>
         private void ClearDataButton_Click(object sender, RoutedEventArgs e)

@@ -42,6 +42,7 @@
         <Reference Include="System"/>
         <Reference Include="System.Core"/>
         <Reference Include="System.Data"/>
+        <Reference Include="System.Windows.Forms"/>
         <Reference Include="System.Xml"/>
         <Reference Include="System.Xaml">
             <RequiredTargetFramework>4.0</RequiredTargetFramework>
@@ -67,10 +68,15 @@
             <SubType>Designer</SubType>
         </ApplicationDefinition>
         <Compile Include="SettingsWindow.xaml.cs" />
+        <Compile Include="LocalPathSettingsWindow.xaml.cs">
+            <DependentUpon>LocalPathSettingsWindow.xaml</DependentUpon>
+            <SubType>Code</SubType>
+        </Compile>
         <Page Include="MainWindow.xaml">
             <Generator>MSBuild:Compile</Generator>
             <SubType>Designer</SubType>
         </Page>
+        <Page Include="LocalPathSettingsWindow.xaml" />
         <Compile Include="App.xaml.cs">
             <DependentUpon>App.xaml</DependentUpon>
             <SubType>Code</SubType>
@@ -80,6 +86,7 @@
             <SubType>Code</SubType>
         </Compile>
         <Compile Include="Models\PackageInfo.cs" />
+        <Compile Include="Models\LocalPathInfo.cs" />
         <Compile Include="Services\ApplicationFinderService.cs" />
         <Compile Include="Services\DataPersistenceService.cs" />
         <Compile Include="Services\FtpService.cs" />
