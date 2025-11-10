@@ -279,7 +279,8 @@ namespace PackageManager.Models
         [DataGridMultiButton(nameof(ConfigOperationConfig), 11, 
                              DisplayName = "配置操作", Width = "300", ButtonSpacing = 15)]
         public string ConfigOperation { get; set; }
-        
+
+        public bool IsEnabled => !IsReadOnly;
 
         /// <summary>
         /// 配置操作动态按钮配置列表
@@ -297,7 +298,7 @@ namespace PackageManager.Models
                         Height = 26,
                         CommandProperty = nameof(OpenParameterConfigCommand),
                         ToolTip = "打开参数配置文件夹",
-                        IsEnabledProperty = $"!{nameof(IsReadOnly)}"
+                        IsEnabledProperty = $"{nameof(IsEnabled)}"
                     },
                     new ButtonConfig
                     {
@@ -306,7 +307,7 @@ namespace PackageManager.Models
                         Height = 26,
                         CommandProperty = nameof(OpenImageConfigCommand),
                         ToolTip = "打开图片配置文件夹",
-                        IsEnabledProperty = $"!{nameof(IsReadOnly)}"
+                        IsEnabledProperty = $"{nameof(IsEnabled)}"
                     },
                     new ButtonConfig
                     {
@@ -315,6 +316,7 @@ namespace PackageManager.Models
                         Height = 26,
                         CommandProperty = nameof(ChangeModeToDebugCommand),
                         ToolTip = "切换调试模式与正常模式",
+                        IsEnabledProperty = $"{nameof(IsEnabled)}",
                     }
                 };
             }
@@ -379,7 +381,11 @@ namespace PackageManager.Models
         {
             get => _isReadOnly;
 
-            set => SetProperty(ref _isReadOnly, value);
+            set
+            {
+                SetProperty(ref _isReadOnly, value);
+                OnPropertyChanged(nameof(IsEnabled));
+            }
         }
 
         /// <summary>

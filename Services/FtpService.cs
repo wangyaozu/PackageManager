@@ -114,11 +114,18 @@ namespace PackageManager.Services
             {
                 throw new Exception($"获取目录失败: {ex.Message}", ex);
             }
-
-            //不用排序，直接返回
-            return directories;
             
-            // return directories.OrderBy(d => d).ToList();
+            // 按照版本号排序，格式为v11.3.2.0或v11.3.2或v11.3.2.0_log，尾部的_log等后缀不参与排序
+            return directories
+                   .Select(d => new
+                   {
+                       Original = d,
+                       Version = Regex.Replace(d, @"^(v\d+(\.\d+)*).*", "$1"),
+                   })
+                   .OrderBy(x => Version.Parse(x.Version.TrimStart('v')))
+                   .ThenBy(x => x.Original)
+                   .Select(x => x.Original)
+                   .ToList();
         }
 
         /// <summary>
