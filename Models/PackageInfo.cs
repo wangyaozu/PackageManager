@@ -752,6 +752,7 @@ namespace PackageManager.Models
                         stageProgress.Clear();
                         stageOrder.Clear();
                         currentStage = null;
+                        InitializeDefaultStages();
                     }));
 
                     process.Start();
@@ -969,6 +970,23 @@ namespace PackageManager.Models
             {
                 Status = PackageStatus.Completed;
                 Progress = Math.Max(Progress, 100);
+            }
+        }
+
+        private void InitializeDefaultStages()
+        {
+            // 预置常见阶段，避免仅有“下载”阶段时把总进度跑满
+            var defaults = new[] { "下载", "解压", "签名", "加密" };
+            foreach (var st in defaults)
+            {
+                if (!stageOrder.Contains(st))
+                {
+                    stageOrder.Add(st);
+                }
+                if (!stageProgress.ContainsKey(st))
+                {
+                    stageProgress[st] = 0;
+                }
             }
         }
 
