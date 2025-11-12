@@ -21,11 +21,18 @@ namespace PackageManager
         private readonly ApplicationFinderService _applicationFinderService;
         private readonly DataPersistenceService _dataPersistenceService;
         private ObservableCollection<PackageInfo> _packages;
+        private PackageInfo _latestActivePackage;
 
         public ObservableCollection<PackageInfo> Packages
         {
             get => _packages;
             set => SetProperty(ref _packages, value);
+        }
+
+        public PackageInfo LatestActivePackage
+        {
+            get => _latestActivePackage;
+            set => SetProperty(ref _latestActivePackage, value);
         }
 
         public MainWindow()
@@ -320,6 +327,7 @@ namespace PackageManager
                 package.VersionChanged += OnPackageVersionChanged;
                 package.DownloadRequested += OnPackageDownloadRequested;
                 package.DebugModeChanged += OnPackageDebugModeChanged;
+                package.PropertyChanged += OnPackagePropertyChanged;
             }
             
             if (_dataPersistenceService.HasMainWindowState())
@@ -342,7 +350,7 @@ namespace PackageManager
         
         private async void OnPackageDownloadRequested(PackageInfo packageInfo)
         {
-            StatusText.Text = $"正在更新 {packageInfo.ProductName}...";
+            packageInfo.StatusText = $"正在更新 {packageInfo.ProductName}...";
             
             // 设置为只读状态，防止更新时编辑
             packageInfo.IsReadOnly = true;
@@ -354,7 +362,7 @@ namespace PackageManager
                                                                       // 在UI线程更新状态
                                                                       Dispatcher.Invoke(() =>
                                                                       {
-                                                                          StatusText.Text = $"{packageInfo.ProductName}: {message}";
+                                                                          packageInfo.StatusText = $"{packageInfo.ProductName}: {message}";
                                                                       });
                                                                   });
 
@@ -366,11 +374,11 @@ namespace PackageManager
                 
                 if (success)
                 {
-                    StatusText.Text = $"{packageInfo.ProductName} 更新完成";
+                    packageInfo.StatusText = $"{packageInfo.ProductName} 更新完成";
                 }
                 else
                 {
-                    StatusText.Text = $"{packageInfo.ProductName} 更新失败";
+                    packageInfo.StatusText = $"{packageInfo.ProductName} 更新失败";
                 }
             });
         }
@@ -382,7 +390,7 @@ namespace PackageManager
         {
             try
             {
-                StatusText.Text = $"{package.ProductName} 当前模式：{(isDebug ? "调试模式" : "正常模式")}";
+                package.StatusText = $"{package.ProductName} 当前模式：{(isDebug ? "调试模式" : "正常模式")}";
                 
                 // 持久化到主界面状态（包含IsDebugMode）
                 SaveCurrentState();
@@ -497,7 +505,11 @@ namespace PackageManager
                 {
                     // 保存主界面状态（包含LocalPath）
                     _dataPersistenceService.SaveMainWindowState(Packages);
-                    StatusText.Text = "本地路径设置已保存";
+                    var pkg = LatestActivePackage ?? Packages?.FirstOrDefault();
+                    if (pkg != null)
+                    {
+                        pkg.StatusText = "本地路径设置已保存";
+                    }
                 }
             }
             catch (Exception ex)
@@ -525,7 +537,11 @@ namespace PackageManager
                     _dataPersistenceService.ClearAllCachedData();
                     _dataPersistenceService.ClearSettings();
                     
-                    StatusText.Text ="所有数据已清除";
+                    var pkg = LatestActivePackage ?? Packages?.FirstOrDefault();
+                    if (pkg != null)
+                    {
+                        pkg.StatusText = "所有数据已清除";
+                    }
                     
                     MessageBox.Show("数据清除完成！\n建议重启应用程序以确保所有更改生效。", 
                                   "清除完成", 
@@ -538,5 +554,18 @@ namespace PackageManager
                 MessageBox.Show($"清除数据失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private void OnPackagePropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(PackageInfo.StatusText) && sender is PackageInfo pkg)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    LatestActivePackage = pkg;
+                });
+            }
+        }
+
+        
     }
 }

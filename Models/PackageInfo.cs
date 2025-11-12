@@ -5,6 +5,9 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -50,45 +53,45 @@ namespace PackageManager.Models
     /// </summary>
     public class PackageInfo : INotifyPropertyChanged
     {
-        private string _productName;
+        private string productName;
 
-        private string _version;
+        private string version;
 
-        private string _ftpServerPath;
+        private string ftpServerPath;
 
-        private string _localPath;
+        private string localPath;
 
-        private PackageStatus _status;
+        private PackageStatus status;
 
-        private double _progress;
+        private double progress;
 
-        private string _statusText;
+        private string statusText;
 
         private string uploadPackageName;
 
-        private ObservableCollection<string> _availableVersions;
+        private ObservableCollection<string> availableVersions;
 
-        private ObservableCollection<string> _availablePackages;
+        private ObservableCollection<string> availablePackages;
 
-        private ICommand _updateCommand;
+        private ICommand updateCommand;
         
-        private ICommand _openParameterConfigCommand;
+        private ICommand openParameterConfigCommand;
         
-        private ICommand _openImageConfigCommand;
+        private ICommand openImageConfigCommand;
         
-        private ICommand _changeModeToDebugCommand;
+        private ICommand changeModeToDebugCommand;
 
-        private bool _isDebugMode;
+        private bool isDebugMode;
 
-        private ObservableCollection<ApplicationVersion> _availableExecutableVersions;
+        private ObservableCollection<ApplicationVersion> availableExecutableVersions;
 
-        private string _selectedExecutableVersion;
+        private string selectedExecutableVersion;
 
-        private string _executablePath;
+        private string executablePath;
 
-        private ICommand _openPathCommand;
+        private ICommand openPathCommand;
 
-        private bool _isReadOnly;
+        private bool isReadOnly;
 
         private string time;
 
@@ -115,9 +118,9 @@ namespace PackageManager.Models
         [DataGridColumn(1, DisplayName = "产品名称", Width = "180", IsReadOnly = true)]
         public string ProductName
         {
-            get => _productName;
+            get => productName;
 
-            set => SetProperty(ref _productName, value);
+            set => SetProperty(ref productName, value);
         }
 
         /// <summary>
@@ -126,11 +129,11 @@ namespace PackageManager.Models
         [DataGridComboBox(2, "版本", "AvailableVersions", Width = "120", IsReadOnlyProperty = "IsReadOnly")]
         public string Version
         {
-            get => _version;
+            get => version;
 
             set
             {
-                if (SetProperty(ref _version, value))
+                if (SetProperty(ref version, value))
                 {
                     OnPropertyChanged(nameof(DownloadUrl));
                     VersionChanged?.Invoke(this, value);
@@ -175,11 +178,11 @@ namespace PackageManager.Models
         // [DataGridColumn(4, DisplayName = "FTP服务器路径", Width = "350",IsReadOnly = true)]
         public string FtpServerPath
         {
-            get => _ftpServerPath;
+            get => ftpServerPath;
 
             set
             {
-                if (SetProperty(ref _ftpServerPath, value))
+                if (SetProperty(ref ftpServerPath, value))
                 {
                     OnPropertyChanged(nameof(DownloadUrl));
                 }
@@ -191,11 +194,11 @@ namespace PackageManager.Models
         /// </summary>
         public string LocalPath
         {
-            get => _localPath;
+            get => localPath;
 
             set
             {
-                if (SetProperty(ref _localPath, value))
+                if (SetProperty(ref localPath, value))
                 {
                     TryLoadDebugModeFromConfig();
                 }
@@ -208,9 +211,9 @@ namespace PackageManager.Models
         [DataGridColumn(6, DisplayName = "状态", Width = "100", IsReadOnly = true)]
         public PackageStatus Status
         {
-            get => _status;
+            get => status;
 
-            set => SetProperty(ref _status, value);
+            set => SetProperty(ref status, value);
         }
 
         [DataGridButton(7,
@@ -237,9 +240,9 @@ namespace PackageManager.Models
                              TextFormat = "{0:F1}%")]
         public double Progress
         {
-            get => _progress;
+            get => progress;
 
-            set => SetProperty(ref _progress, value);
+            set => SetProperty(ref progress, value);
         }
 
         /// <summary>
@@ -254,9 +257,9 @@ namespace PackageManager.Models
                           ComboBoxSelectedValuePath = "DisPlayName")]
         public string SelectedExecutableVersion
         {
-            get => _selectedExecutableVersion;
+            get => selectedExecutableVersion;
 
-            set => SetProperty(ref _selectedExecutableVersion, value);
+            set => SetProperty(ref selectedExecutableVersion, value);
         }
 
         /// <summary>
@@ -277,59 +280,55 @@ namespace PackageManager.Models
         /// 配置操作
         /// </summary>
         [DataGridMultiButton(nameof(ConfigOperationConfig), 11, 
-                             DisplayName = "配置操作", Width = "300", ButtonSpacing = 15)]
+                             DisplayName = "配置操作", Width = "200", ButtonSpacing = 15)]
         public string ConfigOperation { get; set; }
 
         public bool IsEnabled => !IsReadOnly;
 
+        
+        [DataGridButton(12,
+                        DisplayName = "签名加密",
+                        Width = "100",
+                        ControlType = "Button",
+                        ButtonText = "校验",
+                        ButtonWidth = 80,
+                        ButtonHeight = 26,
+                        ButtonCommandProperty = "RunEmbeddedToolCommand",
+                        IsReadOnlyProperty = "IsReadOnly",
+                        ToolTip = "进行签名加密的校验，并输出结果")]
+        public string SignatureEncryption { get; set; }
+        
+
         /// <summary>
         /// 配置操作动态按钮配置列表
         /// </summary>
-        public List<ButtonConfig> ConfigOperationConfig
+        public List<ButtonConfig> ConfigOperationConfig => new List<ButtonConfig>
         {
-            get
+            new ButtonConfig
             {
-                return new List<ButtonConfig>
-                {
-                    new ButtonConfig
-                    {
-                        Text = "参数",
-                        Width = 60,
-                        Height = 26,
-                        CommandProperty = nameof(OpenParameterConfigCommand),
-                        ToolTip = "打开参数配置文件夹",
-                        IsEnabledProperty = $"{nameof(IsEnabled)}"
-                    },
-                    new ButtonConfig
-                    {
-                        Text = "图片",
-                        Width = 60,
-                        Height = 26,
-                        CommandProperty = nameof(OpenImageConfigCommand),
-                        ToolTip = "打开图片配置文件夹",
-                        IsEnabledProperty = $"{nameof(IsEnabled)}"
-                    },
-                    new ButtonConfig
-                    {
-                        Text = "模式切换",
-                        Width = 60,
-                        Height = 26,
-                        CommandProperty = nameof(ChangeModeToDebugCommand),
-                        ToolTip = "切换调试模式与正常模式",
-                        IsEnabledProperty = $"{nameof(IsEnabled)}",
-                    }
-                };
-            }
-        }
-        
+                Text = "目录", Width = 60, Height = 26, CommandProperty = nameof(OpenParameterConfigCommand), ToolTip = "打开参数配置文件夹",
+                IsEnabledProperty = $"{nameof(IsEnabled)}",
+            },
+            // new ButtonConfig
+            // {
+            //     Text = "图片", Width = 60, Height = 26, CommandProperty = nameof(OpenImageConfigCommand), ToolTip = "打开图片配置文件夹",
+            //     IsEnabledProperty = $"{nameof(IsEnabled)}",
+            // },
+            new ButtonConfig
+            {
+                Text = "模式切换", Width = 60, Height = 26, CommandProperty = nameof(ChangeModeToDebugCommand), ToolTip = "切换调试模式与正常模式",
+                IsEnabledProperty = $"{nameof(IsEnabled)}",
+            },
+        };
+
         /// <summary>
         /// 更新操作命令
         /// </summary>
         public ICommand OpenParameterConfigCommand
         {
-            get => _openParameterConfigCommand ?? (_openParameterConfigCommand = new RelayCommand(ExecuteOpenParameterConfig));
+            get => openParameterConfigCommand ?? (openParameterConfigCommand = new RelayCommand(ExecuteOpenParameterConfig));
 
-            set => SetProperty(ref _openParameterConfigCommand, value);
+            set => SetProperty(ref openParameterConfigCommand, value);
         }
 
        
@@ -338,9 +337,9 @@ namespace PackageManager.Models
         /// </summary>
         public ICommand OpenImageConfigCommand
         {
-            get => _openImageConfigCommand ?? (_openImageConfigCommand = new RelayCommand(ExecuteOpenImageConfig));
+            get => openImageConfigCommand ?? (openImageConfigCommand = new RelayCommand(ExecuteOpenImageConfig));
 
-            set => SetProperty(ref _openImageConfigCommand, value);
+            set => SetProperty(ref openImageConfigCommand, value);
         }
 
         /// <summary>
@@ -348,20 +347,31 @@ namespace PackageManager.Models
         /// </summary>
         public ICommand ChangeModeToDebugCommand
         {
-            get => _changeModeToDebugCommand ?? (_changeModeToDebugCommand = new RelayCommand(ExecuteToggleDebugMode));
+            get => changeModeToDebugCommand ?? (changeModeToDebugCommand = new RelayCommand(ExecuteToggleDebugMode));
 
-            set => SetProperty(ref _changeModeToDebugCommand, value);
+            set => SetProperty(ref changeModeToDebugCommand, value);
         }
         
+        private ICommand runEmbeddedToolCommand;
+
+        /// <summary>
+        /// 运行嵌入外部工具命令
+        /// </summary>
+        public ICommand RunEmbeddedToolCommand
+        {
+            get => runEmbeddedToolCommand ?? (runEmbeddedToolCommand = new RelayCommand(ExecuteRunEmbeddedTool));
+
+            set => SetProperty(ref runEmbeddedToolCommand, value);
+        }
 
         /// <summary>
         /// 状态文本
         /// </summary>
         public string StatusText
         {
-            get => _statusText;
+            get => statusText;
 
-            set => SetProperty(ref _statusText, value);
+            set => SetProperty(ref statusText, value);
         }
 
         /// <summary>
@@ -369,9 +379,9 @@ namespace PackageManager.Models
         /// </summary>
         public string ExecutablePath
         {
-            get => _executablePath;
+            get => executablePath;
 
-            set => SetProperty(ref _executablePath, value);
+            set => SetProperty(ref executablePath, value);
         }
 
         /// <summary>
@@ -379,11 +389,11 @@ namespace PackageManager.Models
         /// </summary>
         public bool IsReadOnly
         {
-            get => _isReadOnly;
+            get => isReadOnly;
 
             set
             {
-                SetProperty(ref _isReadOnly, value);
+                SetProperty(ref isReadOnly, value);
                 OnPropertyChanged(nameof(IsEnabled));
             }
         }
@@ -393,9 +403,9 @@ namespace PackageManager.Models
         /// </summary>
         public bool IsDebugMode
         {
-            get => _isDebugMode;
+            get => isDebugMode;
 
-            set => SetProperty(ref _isDebugMode, value);
+            set => SetProperty(ref isDebugMode, value);
         }
 
         /// <summary>
@@ -426,9 +436,9 @@ namespace PackageManager.Models
         /// </summary>
         public ObservableCollection<string> AvailableVersions
         {
-            get => _availableVersions ?? (_availableVersions = new ObservableCollection<string>());
+            get => availableVersions ?? (availableVersions = new ObservableCollection<string>());
 
-            set => SetProperty(ref _availableVersions, value);
+            set => SetProperty(ref availableVersions, value);
         }
 
         /// <summary>
@@ -436,9 +446,9 @@ namespace PackageManager.Models
         /// </summary>
         public ObservableCollection<string> AvailablePackages
         {
-            get => _availablePackages ?? (_availablePackages = new ObservableCollection<string>());
+            get => availablePackages ?? (availablePackages = new ObservableCollection<string>());
 
-            set => SetProperty(ref _availablePackages, value);
+            set => SetProperty(ref availablePackages, value);
         }
 
         /// <summary>
@@ -446,9 +456,9 @@ namespace PackageManager.Models
         /// </summary>
         public ObservableCollection<ApplicationVersion> AvailableExecutableVersions
         {
-            get => _availableExecutableVersions ?? (_availableExecutableVersions = new ObservableCollection<ApplicationVersion>());
+            get => availableExecutableVersions ?? (availableExecutableVersions = new ObservableCollection<ApplicationVersion>());
 
-            set => SetProperty(ref _availableExecutableVersions, value);
+            set => SetProperty(ref availableExecutableVersions, value);
         }
 
         /// <summary>
@@ -456,9 +466,9 @@ namespace PackageManager.Models
         /// </summary>
         public ICommand UpdateCommand
         {
-            get => _updateCommand ?? (_updateCommand = new RelayCommand(ExecuteDownload));
+            get => updateCommand ?? (updateCommand = new RelayCommand(ExecuteDownload));
 
-            set => SetProperty(ref _updateCommand, value);
+            set => SetProperty(ref updateCommand, value);
         }
 
         /// <summary>
@@ -466,9 +476,9 @@ namespace PackageManager.Models
         /// </summary>
         public ICommand OpenPathCommand
         {
-            get => _openPathCommand ?? (_openPathCommand = new RelayCommand(ExecuteOpenPath));
+            get => openPathCommand ?? (openPathCommand = new RelayCommand(ExecuteOpenPath));
 
-            set => SetProperty(ref _openPathCommand, value);
+            set => SetProperty(ref openPathCommand, value);
         }
 
         /// <summary>
@@ -616,6 +626,262 @@ namespace PackageManager.Models
             else
             {
                 MessageBox.Show("图片配置路径无效或文件夹不存在", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>
+        /// 从嵌入资源提取并静默运行外部工具
+        /// </summary>
+        private void ExecuteRunEmbeddedTool()
+        {
+            // 异步运行，支持并发，避免阻塞UI
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                IsReadOnly = true;
+                
+                try
+                {
+                    const string resourceSuffix = "签名加密校验20251112.exe";
+                    const string outputFileName = "签名加密校验20251112.exe";
+
+                    string exePath = EnsureEmbeddedToolExtracted(resourceSuffix, outputFileName);
+                    if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+                    {
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            StatusText = "未找到嵌入的工具资源";
+                        }));
+                        IsReadOnly = false;
+                        return;
+                    }
+
+                    // 为当前产品生成独立日志文件，并启动实时追踪
+                    string logPath = GetEmbeddedToolLogPath();
+                    var cts = new CancellationTokenSource();
+                    EnsureLogFileExists(logPath);
+                    StartRealtimeLogTail(logPath, cts.Token);
+                    
+                    string resultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), UploadPackageName + "_result.log");
+
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = exePath,
+                        Arguments = BuildEmbeddedToolArguments(resultPath),
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory
+                    };
+                    
+                    var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+
+                    process.OutputDataReceived += (s, e) =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(e.Data))
+                        {
+                            // 将输出写入日志文件，供状态栏实时追踪
+                            try { File.AppendAllText(logPath, e.Data + Environment.NewLine, Encoding.UTF8); } catch { }
+                            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                StatusText = e.Data;
+                            }));
+                        }
+                    };
+                    process.ErrorDataReceived += (s, e) =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(e.Data))
+                        {
+                            // 错误输出写入日志
+                            try { File.AppendAllText(logPath, "[ERROR] " + e.Data + Environment.NewLine, Encoding.UTF8); } catch { }
+                            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                StatusText = $"工具错误：{e.Data}";
+                            }));
+                        }
+                    };
+                    process.Exited += (s, e) =>
+                    {
+                        try
+                        {
+                            var exitCode = process.ExitCode;
+                            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                StatusText = exitCode == 0 ? "外部工具运行完成" : $"外部工具运行失败（{exitCode}）";
+                            }));
+                        }
+                        finally
+                        {
+                            process.Dispose();
+                            IsReadOnly = false;
+                            cts.Cancel();
+                        }
+
+                        if (File.Exists(resultPath))
+                        {
+                            //打开 文件
+                            Process.Start(resultPath);
+                        }
+                    };
+
+                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        StatusText = $"正在运行外部工具：{ProductName}";
+                    }));
+
+                    process.Start();
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                }
+                catch (Exception ex)
+                {
+                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        StatusText = $"运行外部工具失败：{ex.Message}";
+                    }));
+                }
+            });
+        }
+        
+        /// <summary>
+        /// 根据当前包信息构建外部工具的命令行参数
+        /// </summary>
+        private string BuildEmbeddedToolArguments(string resultPath)
+        {
+            // 根据对方工具的约定调整参数格式
+            string downloadUrl = DownloadUrl;
+            if (string.IsNullOrEmpty(downloadUrl)) downloadUrl = string.Empty;
+            var args = $"-u \"{downloadUrl}\""; 
+            args += $" --no-wait-close";
+            args += $" -o \"{resultPath}\"";
+            
+            return args;
+        }
+
+        private string GetEmbeddedToolLogPath()
+        {
+            var baseName = string.IsNullOrWhiteSpace(ProductName) ? "Package" : ProductName;
+            var safeName = SanitizeFileName(baseName + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PackageManager", "logs");
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, safeName + ".log");
+        }
+
+        private static string SanitizeFileName(string input)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            var sb = new StringBuilder(input.Length);
+            foreach (var ch in input)
+            {
+                sb.Append(invalid.Contains(ch) ? '_' : ch);
+            }
+            return sb.ToString();
+        }
+
+        private static void EnsureLogFileExists(string logPath)
+        {
+            try
+            {
+                if (!File.Exists(logPath))
+                {
+                    using (var fs = new FileStream(logPath, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite)) { }
+                }
+            }
+            catch { }
+        }
+
+        private void StartRealtimeLogTail(string logPath, CancellationToken token)
+        {
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                long position = 0;
+                while (!token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        if (!File.Exists(logPath))
+                        {
+                            Thread.Sleep(250);
+                            continue;
+                        }
+
+                        using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        using (var reader = new StreamReader(fs, Encoding.UTF8, true))
+                        {
+                            if (fs.Length < position)
+                            {
+                                position = 0; // 日志被截断，重置
+                            }
+                            fs.Seek(position, SeekOrigin.Begin);
+
+                            string line;
+                            while ((line = reader.ReadLine()) != null)
+                            {
+                                var captured = line;
+                                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                                {
+                                    if (!string.IsNullOrWhiteSpace(captured))
+                                    {
+                                        StatusText = captured;
+                                    }
+                                }));
+                            }
+                            position = fs.Position;
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略瞬时读写冲突
+                    }
+
+                    Thread.Sleep(250);
+                }
+            }, token);
+        }
+
+        /// <summary>
+        /// 提取嵌入的exe到本地工具目录
+        /// </summary>
+        private static string EnsureEmbeddedToolExtracted(string resourceSuffix, string outputFileName)
+        {
+            try
+            {
+                var asm = typeof(PackageInfo).Assembly;
+                var name = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith(resourceSuffix, StringComparison.OrdinalIgnoreCase));
+                if (string.IsNullOrEmpty(name))
+                {
+                    return null;
+                }
+
+                var targetDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PackageManager", "tools");
+                Directory.CreateDirectory(targetDir);
+                var targetPath = Path.Combine(targetDir, outputFileName);
+
+                // 并发安全：若文件已存在则直接复用；否则尝试写入
+                if (File.Exists(targetPath))
+                {
+                    return targetPath;
+                }
+
+                using (var stream = asm.GetManifestResourceStream(name))
+                {
+                    // 双重检查，避免并发写入冲突
+                    if (File.Exists(targetPath))
+                    {
+                        return targetPath;
+                    }
+                    using (var fs = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+                    {
+                        stream.CopyTo(fs);
+                    }
+                }
+
+                return targetPath;
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -785,14 +1051,14 @@ namespace PackageManager.Models
     /// </summary>
     public class RelayCommand : ICommand
     {
-        private readonly Action _execute;
+        private readonly Action execute;
 
-        private readonly Func<bool> _canExecute;
+        private readonly Func<bool> canExecute;
 
         public RelayCommand(Action execute, Func<bool> canExecute = null)
         {
-            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute;
+            this.execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            this.canExecute = canExecute;
         }
 
         public event EventHandler CanExecuteChanged
@@ -804,12 +1070,12 @@ namespace PackageManager.Models
 
         public bool CanExecute(object parameter)
         {
-            return _canExecute?.Invoke() ?? true;
+            return canExecute?.Invoke() ?? true;
         }
 
         public void Execute(object parameter)
         {
-            _execute();
+            execute();
         }
     }
 }

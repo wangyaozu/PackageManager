@@ -37,10 +37,10 @@
                        Margin="10">
         </C:CDataGrid>
         
-        <!-- 状态栏 -->
+        <!-- 状态栏（显示最后一个有状态更新的产品） -->
         <StatusBar Grid.Row="2" Margin="0,20,0,0">
             <StatusBarItem>
-                <TextBlock Name="StatusText" Text="就绪"/>
+                <TextBlock Name="StatusText" Text="{Binding LatestActivePackage.StatusText, FallbackValue=就绪, TargetNullValue=就绪}"/>
             </StatusBarItem>
         </StatusBar>
     </Grid>

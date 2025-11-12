@@ -118,6 +118,10 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
+        <!-- 将外部工具exe作为嵌入资源，确保最终仅生成本程序的exe -->
+        <EmbeddedResource Include="Assets\Tools\签名加密校验20251112.exe" />
+    </ItemGroup>
+    <ItemGroup>
       <Folder Include="packages\" />
     </ItemGroup>
     <ItemGroup>
