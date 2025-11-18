@@ -5,10 +5,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
@@ -84,11 +82,11 @@ namespace PackageManager.Models
         private ObservableCollection<string> availablePackages;
 
         private ICommand updateCommand;
-        
+
         private ICommand openParameterConfigCommand;
-        
+
         private ICommand openImageConfigCommand;
-        
+
         private ICommand changeModeToDebugCommand;
 
         private bool isDebugMode;
@@ -105,10 +103,7 @@ namespace PackageManager.Models
 
         private string time;
 
-        // 阶段进度聚合（按外部工具输出的 [STAGE]/[PROGRESS] 进行合并）
-        private readonly Dictionary<string, double> stageProgress = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        private readonly List<string> stageOrder = new List<string>();
-        private string currentStage;
+        private ICommand runEmbeddedToolCommand;
 
         /// <summary>
         /// 更新请求事件
@@ -118,6 +113,7 @@ namespace PackageManager.Models
         public event Action<PackageInfo, string> VersionChanged;
 
         public event Action<PackageInfo> DownloadRequested;
+
         public event Action<PackageInfo, bool> DebugModeChanged;
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -215,7 +211,14 @@ namespace PackageManager.Models
             {
                 if (SetProperty(ref localPath, value))
                 {
-                    TryLoadDebugModeFromConfig();
+                    try
+                    {
+                        bool isDebug = DebugSettingsService.ReadIsDebugMode(localPath, isDebugMode);
+                        IsDebugMode = isDebug;
+                    }
+                    catch
+                    {
+                    }
                 }
             }
         }
@@ -294,13 +297,15 @@ namespace PackageManager.Models
         /// <summary>
         /// 配置操作
         /// </summary>
-        [DataGridMultiButton(nameof(ConfigOperationConfig), 11, 
-                             DisplayName = "配置操作", Width = "200", ButtonSpacing = 15)]
+        [DataGridMultiButton(nameof(ConfigOperationConfig),
+                             11,
+                             DisplayName = "配置操作",
+                             Width = "200",
+                             ButtonSpacing = 15)]
         public string ConfigOperation { get; set; }
 
         public bool IsEnabled => !IsReadOnly;
 
-        
         [DataGridButton(12,
                         DisplayName = "签名加密",
                         Width = "100",
@@ -312,7 +317,6 @@ namespace PackageManager.Models
                         IsReadOnlyProperty = "IsReadOnly",
                         ToolTip = "进行签名加密的校验，并输出结果")]
         public string SignatureEncryption { get; set; }
-        
 
         /// <summary>
         /// 配置操作动态按钮配置列表
@@ -324,6 +328,7 @@ namespace PackageManager.Models
                 Text = "目录", Width = 60, Height = 26, CommandProperty = nameof(OpenParameterConfigCommand), ToolTip = "打开参数配置文件夹",
                 IsEnabledProperty = $"{nameof(IsEnabled)}",
             },
+
             // new ButtonConfig
             // {
             //     Text = "图片", Width = 60, Height = 26, CommandProperty = nameof(OpenImageConfigCommand), ToolTip = "打开图片配置文件夹",
@@ -346,7 +351,6 @@ namespace PackageManager.Models
             set => SetProperty(ref openParameterConfigCommand, value);
         }
 
-       
         /// <summary>
         /// 更新操作命令
         /// </summary>
@@ -366,8 +370,6 @@ namespace PackageManager.Models
 
             set => SetProperty(ref changeModeToDebugCommand, value);
         }
-        
-        private ICommand runEmbeddedToolCommand;
 
         /// <summary>
         /// 运行嵌入外部工具命令
@@ -598,7 +600,7 @@ namespace PackageManager.Models
 
             return true;
         }
-
+       
         /// <summary>
         /// 执行更新操作
         /// </summary>
@@ -615,10 +617,10 @@ namespace PackageManager.Models
         {
             try
             {
-                PackageManager.Services.LoggingService.LogInfo($"开始下载：Product={ProductName}, Url={DownloadUrl}");
+                LoggingService.LogInfo($"开始下载：Product={ProductName}, Url={DownloadUrl}");
                 if (string.IsNullOrWhiteSpace(DownloadUrl))
                 {
-                    PackageManager.Services.LoggingService.LogWarning("下载地址为空，下载可能失败。请检查 FtpServerPath/Version/UploadPackageName。");
+                    LoggingService.LogWarning("下载地址为空，下载可能失败。请检查 FtpServerPath/Version/UploadPackageName。");
                 }
 
                 // 触发更新事件，由MainWindow处理具体的更新逻辑
@@ -626,7 +628,7 @@ namespace PackageManager.Models
             }
             catch (Exception ex)
             {
-                PackageManager.Services.LoggingService.LogError(ex, "触发下载事件时发生异常");
+                LoggingService.LogError(ex, "触发下载事件时发生异常");
                 Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     StatusText = $"下载触发失败：{ex.Message}";
@@ -634,7 +636,7 @@ namespace PackageManager.Models
                 }));
             }
         }
-        
+
         private void ExecuteOpenParameterConfig()
         {
             string path = Path.Combine(LocalPath, "config");
@@ -647,7 +649,7 @@ namespace PackageManager.Models
                 MessageBox.Show("参数配置路径无效或文件夹不存在", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
-        
+
         private void ExecuteOpenImageConfig()
         {
             string path = Path.Combine(LocalPath, "Image");
@@ -667,526 +669,26 @@ namespace PackageManager.Models
         /// </summary>
         private void ExecuteRunEmbeddedTool()
         {
-            // 异步运行，支持并发，避免阻塞UI
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                IsReadOnly = true;
-
-                try
-                {
-                    const string resourceSuffix = "签名加密校验20251112.exe";
-                    const string outputFileName = "签名加密校验20251112.exe";
-
-                    string exePath = EnsureEmbeddedToolExtracted(resourceSuffix, outputFileName);
-                    if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
-                    {
-                        PackageManager.Services.LoggingService.LogWarning("未找到嵌入的工具资源或文件不存在：" + (exePath ?? "<null>"));
-                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            StatusText = "未找到嵌入的工具资源";
-                        }));
-                        IsReadOnly = false;
-                        return;
-                    }
-
-                    // 为当前产品生成独立日志文件
-                    string logPath = GetEmbeddedToolLogPath();
-                    var cts = new CancellationTokenSource();
-                    EnsureLogFileExists(logPath);
-
-                    string resultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), UploadPackageName + "_result.log");
-
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = exePath,
-                        Arguments = BuildEmbeddedToolArguments(logPath, resultPath),
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Hidden,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory
-                    };
-                    
-                    PackageManager.Services.LoggingService.LogInfo($"启动外部工具：Exe={exePath}, Args={psi.Arguments}");
-                    var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
-                    // process.OutputDataReceived += (s, e) =>
-                    // {
-                    //     if (!string.IsNullOrWhiteSpace(e.Data))
-                    //     {
-                    //         // 将输出写入日志文件，供状态栏实时追踪
-                    //         try { File.AppendAllText(logPath, e.Data + Environment.NewLine, Encoding.UTF8); } catch { }
-                    //         // 可选：仅记录规范行，避免日志过大
-                    //         if (Regex.IsMatch(e.Data, "^\\s*\\[(STAGE|PROGRESS)\\]"))
-                    //         {
-                    //             PackageManager.Services.LoggingService.LogInfo("[TOOL-OUT] " + e.Data);
-                    //         }
-                    //         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    //         {
-                    //             StatusText = e.Data;
-                    //             ParseToolOutputLine(e.Data);
-                    //         }));
-                    //     }
-                    // };
-                    // process.ErrorDataReceived += (s, e) =>
-                    // {
-                    //     if (!string.IsNullOrWhiteSpace(e.Data))
-                    //     {
-                    //         // 错误输出写入日志
-                    //         try { File.AppendAllText(logPath, "[ERROR] " + e.Data + Environment.NewLine, Encoding.UTF8); } catch { }
-                    //         PackageManager.Services.LoggingService.LogWarning("[TOOL-ERR] " + e.Data);
-                    //         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    //         {
-                    //             StatusText = $"工具错误：{e.Data}";
-                    //             ParseToolOutputLine(e.Data);
-                    //         }));
-                    //     }
-                    // };
-                    process.Exited += (s, e) =>
-                    {
-                        try
-                        {
-                            var exitCode = process.ExitCode;
-                            if (exitCode != 0)
-                            {
-                                PackageManager.Services.LoggingService.LogError(new Exception($"ExitCode={exitCode}"), "外部工具运行失败");
-                            }
-                            else
-                            {
-                                PackageManager.Services.LoggingService.LogInfo("外部工具运行完成（ExitCode=0）");
-                            }
-
-                            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                            {
-                                StatusText = exitCode == 0 ? "外部工具运行完成" : $"外部工具运行失败（{exitCode}）";
-                                Progress = exitCode == 0 ? 100 : Progress;
-                                Status = exitCode == 0 ? PackageStatus.Completed : PackageStatus.Error;
-                                // 触发桌面提示（签名/加密校验完成）
-                                PackageManager.Services.PackageUpdateService.NotifyVerificationCompleted(this, exitCode == 0, $"ExitCode={exitCode}");
-                            }));
-                        }
-                        finally
-                        {
-                            process.Dispose();
-                            IsReadOnly = false;
-                            cts.Cancel();
-                        }
-
-                        if (File.Exists(resultPath))
-                        {
-                            try
-                            {
-                                Process.Start(resultPath);
-                            }
-                            catch (Exception openEx)
-                            {
-                                PackageManager.Services.LoggingService.LogError(openEx, "打开结果文件失败：" + resultPath);
-                            }
-                        }
-                    };
-
-                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        StatusText = $"正在运行外部工具：{ProductName}";
-                        Status = PackageStatus.Downloading;
-                        Progress = 0;
-                        stageProgress.Clear();
-                        stageOrder.Clear();
-                        currentStage = null;
-                        InitializeDefaultStages();
-                    }));
-
-                    process.Start();
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
-                }
-                catch (Exception ex)
-                {
-                    PackageManager.Services.LoggingService.LogError(ex, "运行外部工具失败（启动阶段）");
-                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        StatusText = $"运行外部工具失败：{ex.Message}";
-                        Status = PackageStatus.Error;
-                    }));
-                    IsReadOnly = false;
-                }
-            });
+            new EmbeddedToolRunnerService(this).RunAsync();
         }
         
-        /// <summary>
-        /// 根据当前包信息构建外部工具的命令行参数
-        /// </summary>
-        private string BuildEmbeddedToolArguments(string logPath, string resultPath)
-        {
-            // 根据对方工具的约定调整参数格式
-            string downloadUrl = DownloadUrl;
-            if (string.IsNullOrEmpty(downloadUrl)) downloadUrl = string.Empty;
-            var args = $"-u \"{downloadUrl}\""; 
-            args += $" --no-wait-close";
-            args += $" -o \"{resultPath}\"";
-            args += $" -p \"{logPath}\"";
-            return args;
-        }
-
-        private string GetEmbeddedToolLogPath()
-        {
-            var baseName = string.IsNullOrWhiteSpace(ProductName) ? "Package" : ProductName;
-            var safeName = SanitizeFileName(baseName + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PackageManager", "logs");
-            Directory.CreateDirectory(dir);
-            return Path.Combine(dir, safeName + ".log");
-        }
-
-        private static string SanitizeFileName(string input)
-        {
-            var invalid = Path.GetInvalidFileNameChars();
-            var sb = new StringBuilder(input.Length);
-            foreach (var ch in input)
-            {
-                sb.Append(invalid.Contains(ch) ? '_' : ch);
-            }
-            return sb.ToString();
-        }
-
-        private static void EnsureLogFileExists(string logPath)
-        {
-            try
-            {
-                if (!File.Exists(logPath))
-                {
-                    using (var fs = new FileStream(logPath, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite)) { }
-                }
-            }
-            catch { }
-        }
-
-        private void StartRealtimeLogTail(string logPath, CancellationToken token)
-        {
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                long position = 0;
-                while (!token.IsCancellationRequested)
-                {
-                    try
-                    {
-                        if (!File.Exists(logPath))
-                        {
-                            Thread.Sleep(250);
-                            continue;
-                        }
-
-                        using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                        using (var reader = new StreamReader(fs, Encoding.UTF8, true))
-                        {
-                            if (fs.Length < position)
-                            {
-                                position = 0; // 日志被截断，重置
-                            }
-                            fs.Seek(position, SeekOrigin.Begin);
-
-                            string line;
-                            while ((line = reader.ReadLine()) != null)
-                            {
-                                var captured = line;
-                                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                                {
-                                    if (!string.IsNullOrWhiteSpace(captured))
-                                    {
-                                        StatusText = captured;
-                                        ParseToolOutputLine(captured);
-                                    }
-                                }));
-                            }
-                            position = fs.Position;
-                        }
-                    }
-                    catch
-                    {
-                        // 忽略瞬时读写冲突
-                    }
-
-                    Thread.Sleep(250);
-                }
-            }, token);
-        }
-
-        /// <summary>
-        /// 解析外部工具输出的阶段与进度：
-        /// 支持规范化行：[STAGE] {stage} {status} 与 [PROGRESS] {stage} {pct}%。 
-        /// 将各阶段独立的1-100合并为总完成度显示到 order=8 的进度列。
-        /// </summary>
-        private void ParseToolOutputLine(string line)
-        {
-            if (string.IsNullOrWhiteSpace(line)) return;
-
-            try
-            {
-                // [STAGE] 阶段行
-                var stageMatch = Regex.Match(line, "^\\s*\\[STAGE\\]\\s+(.+?)\\s+(.+?)\\s*$");
-                if (stageMatch.Success)
-                {
-                    var stage = stageMatch.Groups[1].Value.Trim();
-                    var statusWord = stageMatch.Groups[2].Value.Trim();
-
-                    EnsureStage(stage);
-                    currentStage = stage;
-
-                    var oldStatus = Status;
-                    var mappedStatus = MapStatusForStage(stage);
-                    if (mappedStatus != oldStatus)
-                    {
-                        Status = mappedStatus;
-                        PackageManager.Services.LoggingService.LogInfo($"状态切换：{oldStatus} -> {mappedStatus}（阶段={stage} 标记={statusWord}）");
-                    }
-
-                    // 若阶段标记为结束/完成，则将该阶段设置为100%
-                    if (IsStageCompleteStatus(statusWord))
-                    {
-                        stageProgress[stage] = 100;
-                        PackageManager.Services.LoggingService.LogInfo($"阶段完成：{stage} -> 100%");
-                        UpdateOverallAggregatedProgress();
-                    }
-
-                    return;
-                }
-
-                // [PROGRESS] 进度行（按5%节流由外部工具产生，我们直接取最新值）
-                var progressMatch = Regex.Match(line, "^\\s*\\[PROGRESS\\]\\s+(.+?)\\s+(\\d{1,3})%\\s*$");
-                if (progressMatch.Success)
-                {
-                    var stage = progressMatch.Groups[1].Value.Trim();
-                    var pctStr = progressMatch.Groups[2].Value.Trim();
-                    if (!int.TryParse(pctStr, out var pct)) pct = 0;
-
-                    EnsureStage(stage);
-                    currentStage = stage;
-
-                    // 更新阶段进度
-                    stageProgress[stage] = Math.Max(0, Math.Min(100, pct));
-                    PackageManager.Services.LoggingService.LogInfo($"阶段进度：{stage} -> {pct}%");
-
-                    // 状态映射
-                    var oldStatus = Status;
-                    var mappedStatus = MapStatusForStage(stage);
-                    if (mappedStatus != oldStatus)
-                    {
-                        Status = mappedStatus;
-                        PackageManager.Services.LoggingService.LogInfo($"状态切换：{oldStatus} -> {mappedStatus}（阶段={stage}）");
-                    }
-
-                    UpdateOverallAggregatedProgress();
-                }
-            }
-            catch (Exception ex)
-            {
-                PackageManager.Services.LoggingService.LogError(ex, "解析工具输出行失败：" + line);
-            }
-        }
-
-        private void EnsureStage(string stage)
-        {
-            if (string.IsNullOrWhiteSpace(stage)) return;
-            if (!stageProgress.ContainsKey(stage))
-            {
-                stageProgress[stage] = 0;
-            }
-            if (!stageOrder.Contains(stage))
-            {
-                stageOrder.Add(stage);
-            }
-        }
-
-        private void UpdateOverallAggregatedProgress()
-        {
-            var total = Math.Max(stageOrder.Count, 1);
-            var completed = stageProgress.Values.Count(v => v >= 100);
-            double current = 0;
-            if (!string.IsNullOrEmpty(currentStage) && stageProgress.TryGetValue(currentStage, out var cp))
-            {
-                current = cp;
-            }
-
-            // 合并：完成阶段数 + 当前阶段百分比
-            var overall = ((completed + current / 100.0) / total) * 100.0;
-
-            // 保证单调不减
-            Progress = Math.Max(Progress, overall);
-
-            // 若所有阶段均完成则标记为完成
-            if (stageOrder.Count > 0 && stageOrder.All(st => stageProgress.TryGetValue(st, out var v) && v >= 100))
-            {
-                Status = PackageStatus.Completed;
-                Progress = Math.Max(Progress, 100);
-            }
-        }
-
-        private void InitializeDefaultStages()
-        {
-            // 预置常见阶段，避免仅有“下载”阶段时把总进度跑满
-            var defaults = new[] { "下载", "解压", "签名", "加密" };
-            foreach (var st in defaults)
-            {
-                if (!stageOrder.Contains(st))
-                {
-                    stageOrder.Add(st);
-                }
-                if (!stageProgress.ContainsKey(st))
-                {
-                    stageProgress[st] = 0;
-                }
-            }
-        }
-
-        private PackageStatus MapStatusForStage(string stage)
-        {
-            if (string.IsNullOrWhiteSpace(stage)) return Status;
-
-            // 关键词映射（中文优先）
-            if (Regex.IsMatch(stage, "签名", RegexOptions.IgnoreCase))
-            {
-                return PackageStatus.VerifyingSignature;
-            }
-            if (Regex.IsMatch(stage, "加密", RegexOptions.IgnoreCase))
-            {
-                return PackageStatus.VerifyingEncryption;
-            }
-            if (Regex.IsMatch(stage, "下载", RegexOptions.IgnoreCase))
-            {
-                return PackageStatus.Downloading;
-            }
-            if (Regex.IsMatch(stage, "解压", RegexOptions.IgnoreCase))
-            {
-                return PackageStatus.Extracting;
-            }
-
-            // 默认保持当前状态，以免频繁跳变
-            return Status;
-        }
-
-        private static bool IsStageCompleteStatus(string statusWord)
-        {
-            if (string.IsNullOrWhiteSpace(statusWord)) return false;
-            var s = statusWord.Trim().ToLowerInvariant();
-            return s == "end" || s == "done" || s == "finish" || s == "finished" || s == "success" || s == "completed" || s == "完成" || s == "结束" || s == "完毕";
-        }
-
-        /// <summary>
-        /// 提取嵌入的exe到本地工具目录
-        /// </summary>
-        private static string EnsureEmbeddedToolExtracted(string resourceSuffix, string outputFileName)
-        {
-            try
-            {
-                var asm = typeof(PackageInfo).Assembly;
-                var name = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith(resourceSuffix, StringComparison.OrdinalIgnoreCase));
-                if (string.IsNullOrEmpty(name))
-                {
-                    PackageManager.Services.LoggingService.LogWarning("嵌入资源未找到：" + resourceSuffix);
-                    return null;
-                }
-
-                var targetDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PackageManager", "tools");
-                Directory.CreateDirectory(targetDir);
-                var targetPath = Path.Combine(targetDir, outputFileName);
-
-                if (File.Exists(targetPath))
-                {
-                    return targetPath;
-                }
-
-                using (var stream = asm.GetManifestResourceStream(name))
-                {
-                    if (File.Exists(targetPath))
-                    {
-                        return targetPath;
-                    }
-                    using (var fs = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.Read))
-                    {
-                        stream.CopyTo(fs);
-                    }
-                }
-
-                PackageManager.Services.LoggingService.LogInfo("已提取嵌入工具到：" + targetPath);
-                return targetPath;
-            }
-            catch (Exception ex)
-            {
-                PackageManager.Services.LoggingService.LogError(ex, "提取嵌入工具失败");
-                return null;
-            }
-        }
 
         private void ExecuteToggleDebugMode()
         {
-            // 切换调试模式，并写入配置文件
+            // 切换调试模式，并通过服务写入配置
             bool target = !IsDebugMode;
-            UpdateDebugModeInConfig(target);
+            try
+            {
+                DebugSettingsService.WriteIsDebugMode(LocalPath, target);
+            }
+            catch
+            {
+            }
+
             IsDebugMode = target;
             DebugModeChanged?.Invoke(this, target);
         }
 
-        /// <summary>
-        /// 从配置文件读取调试模式状态
-        /// </summary>
-        private void TryLoadDebugModeFromConfig()
-        {
-            try
-            {
-                string debugSettingPath = Path.Combine(LocalPath ?? string.Empty, "config", "DebugSetting.json");
-                if (!string.IsNullOrEmpty(LocalPath) && File.Exists(debugSettingPath))
-                {
-                    string json = File.ReadAllText(debugSettingPath);
-                    var match = Regex.Match(json, "\"IsDebugMode\"\\s*:\\s*(true|false)", RegexOptions.IgnoreCase);
-                    if (match.Success)
-                    {
-                        IsDebugMode = string.Equals(match.Groups[1].Value, "true", StringComparison.OrdinalIgnoreCase);
-                    }
-                }
-            }
-            catch
-            {
-                // 忽略解析异常，保持当前状态
-            }
-        }
-
-        /// <summary>
-        /// 写入配置文件中的调试模式
-        /// </summary>
-        private void UpdateDebugModeInConfig(bool enable)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(LocalPath))
-                {
-                    return;
-                }
-
-                string configDir = Path.Combine(LocalPath, "config");
-                string debugSettingPath = Path.Combine(configDir, "DebugSetting.json");
-                Directory.CreateDirectory(configDir);
-
-                string newValue = enable ? "true" : "false";
-                string content = File.Exists(debugSettingPath) ? File.ReadAllText(debugSettingPath) : "{\n  \"IsDebugMode\": false\n}";
-
-                if (Regex.IsMatch(content, "\"IsDebugMode\"\\s*:\\s*(true|false)", RegexOptions.IgnoreCase))
-                {
-                    content = Regex.Replace(content, "(\"IsDebugMode\"\\s*:\\s*)(true|false)", $"$1{newValue}", RegexOptions.IgnoreCase);
-                }
-                else
-                {
-                    // 简单地插入键值
-                    content = "{\n  \"IsDebugMode\": " + newValue + "\n}";
-                }
-
-                File.WriteAllText(debugSettingPath, content);
-            }
-            catch
-            {
-                // 忽略写入异常
-            }
-        }
-        
         /// <summary>
         /// 执行打开路径操作
         /// </summary>
@@ -1258,7 +760,7 @@ namespace PackageManager.Models
                     }
 
                     // 打开文件所在的文件夹并选中该文件
-                    System.Diagnostics.Process.Start(ExecutablePath);
+                    Process.Start(ExecutablePath);
                 }
                 catch (Exception ex)
                 {
