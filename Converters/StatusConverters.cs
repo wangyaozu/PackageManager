@@ -76,4 +76,28 @@ namespace PackageManager
             return false;
         }
     }
+
+    /// <summary>
+    /// URL/域名换行转换器：在常见分隔符后注入零宽空格以提供换行点
+    /// </summary>
+    public class UrlWrapConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var s = value as string ?? string.Empty;
+            // 在", :, /, ., -"等分隔符后插入零宽空格以允许换行
+            s = s.Replace(":", ":\u200B")
+                 .Replace("/", "/\u200B")
+                 .Replace(".", ".\u200B")
+                 .Replace("-", "-\u200B");
+            return s;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var s = value as string ?? string.Empty;
+            // 移除零宽空格，避免污染数据
+            return s.Replace("\u200B", string.Empty);
+        }
+    }
 }

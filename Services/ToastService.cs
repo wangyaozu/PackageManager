@@ -25,7 +25,7 @@ namespace PackageManager.Services
                 {
                     try
                     {
-                        ToastNotifier.Show(message, ToastPosition.BottomRight, 5000,new SolidColorBrush(Color.FromRgb(9,150,136)),true);
+                        CToastNotifier.Show(message, ToastPosition.BottomRight, 5000,new SolidColorBrush(Color.FromRgb(9,150,136)),true);
                     }
                     catch (Exception ex)
                     {

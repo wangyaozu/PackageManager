@@ -300,7 +300,7 @@ namespace PackageManager.Models
         [DataGridMultiButton(nameof(ConfigOperationConfig),
                              11,
                              DisplayName = "配置操作",
-                             Width = "200",
+                             Width = "300",
                              ButtonSpacing = 15)]
         public string ConfigOperation { get; set; }
 
@@ -339,6 +339,12 @@ namespace PackageManager.Models
                 Text = "模式切换", Width = 60, Height = 26, CommandProperty = nameof(ChangeModeToDebugCommand), ToolTip = "切换调试模式与正常模式",
                 IsEnabledProperty = $"{nameof(IsEnabled)}",
             },
+
+            new ButtonConfig
+            {
+                Text = "切换配置", Width = 80, Height = 26, CommandProperty = nameof(ChangeConfigPresetCommand), ToolTip = "选择并应用预设配置到 ServerInfo.ini",
+                IsEnabledProperty = $"{nameof(IsEnabled)}",
+            },
         };
 
         /// <summary>
@@ -369,6 +375,18 @@ namespace PackageManager.Models
             get => changeModeToDebugCommand ?? (changeModeToDebugCommand = new RelayCommand(ExecuteToggleDebugMode));
 
             set => SetProperty(ref changeModeToDebugCommand, value);
+        }
+
+        /// <summary>
+        /// 切换配置预设命令
+        /// </summary>
+        private ICommand changeConfigPresetCommand;
+
+        public ICommand ChangeConfigPresetCommand
+        {
+            get => changeConfigPresetCommand ?? (changeConfigPresetCommand = new RelayCommand(ExecuteChangeConfigPreset));
+
+            set => SetProperty(ref changeConfigPresetCommand, value);
         }
 
         /// <summary>
@@ -672,6 +690,62 @@ namespace PackageManager.Models
             new EmbeddedToolRunnerService(this).RunAsync();
         }
         
+        /// <summary>
+        /// 打开预设配置窗口并写入 ServerInfo.ini
+        /// </summary>
+        private void ExecuteChangeConfigPreset()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(LocalPath) || !Directory.Exists(LocalPath))
+                {
+                    MessageBox.Show("本地包路径无效，请先在路径设置中配置。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // 读取当前配置内容，以便在选择界面默认选中
+                string currentIniContent = null;
+                try
+                {
+                    var currentIniPath = Path.Combine(LocalPath, "config", "ServerInfo.ini");
+                    if (File.Exists(currentIniPath))
+                    {
+                        currentIniContent = File.ReadAllText(currentIniPath, Encoding.UTF8);
+                    }
+                }
+                catch { }
+
+                var window = new ConfigPresetWindow(currentIniContent)
+                {
+                    Owner = Application.Current?.MainWindow,
+                };
+
+                var result = window.ShowDialog();
+                if (result != true || string.IsNullOrWhiteSpace(window.SelectedPresetContent))
+                {
+                    return;
+                }
+
+                var configDir = Path.Combine(LocalPath, "config");
+                if (!Directory.Exists(configDir))
+                {
+                    Directory.CreateDirectory(configDir);
+                }
+
+                var iniPath = Path.Combine(configDir, "ServerInfo.ini");
+                File.WriteAllText(iniPath, window.SelectedPresetContent, Encoding.UTF8);
+
+                LoggingService.LogInfo($"已应用预设配置到: {iniPath}");
+                StatusText = "预设配置已应用，已写入 ServerInfo.ini";
+                Status = PackageStatus.Completed;
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "应用预设配置时发生异常");
+                StatusText = $"应用配置失败：{ex.Message}";
+                Status = PackageStatus.Error;
+            }
+        }
 
         private void ExecuteToggleDebugMode()
         {

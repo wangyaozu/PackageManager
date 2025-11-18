@@ -68,16 +68,24 @@
             <Generator>MSBuild:Compile</Generator>
             <SubType>Designer</SubType>
         </ApplicationDefinition>
+        <Compile Include="AddPresetWindow.xaml.cs" />
+        <Compile Include="Models\ConfigPreset.cs" />
+        <Compile Include="Services\ConfigPresetStore.cs" />
         <Compile Include="Services\DebugSettingsService.cs" />
         <Compile Include="Services\EmbeddedToolRunnerService.cs" />
         <Compile Include="Services\LoggingService.cs" />
         <Compile Include="Services\ToastService.cs" />
         <Compile Include="Services\AppUpdateService.cs" />
         <Compile Include="SettingsWindow.xaml.cs" />
+        <Compile Include="ConfigPresetWindow.xaml.cs">
+            <DependentUpon>ConfigPresetWindow.xaml</DependentUpon>
+            <SubType>Code</SubType>
+        </Compile>
         <Compile Include="LocalPathSettingsWindow.xaml.cs">
             <DependentUpon>LocalPathSettingsWindow.xaml</DependentUpon>
             <SubType>Code</SubType>
         </Compile>
+        <Page Include="AddPresetWindow.xaml" />
         <Page Include="MainWindow.xaml">
             <Generator>MSBuild:Compile</Generator>
             <SubType>Designer</SubType>
@@ -87,6 +95,7 @@
             <SubType>Designer</SubType>
         </Page>
         <Page Include="LocalPathSettingsWindow.xaml" />
+        <Page Include="ConfigPresetWindow.xaml" />
         <Compile Include="App.xaml.cs">
             <DependentUpon>App.xaml</DependentUpon>
             <SubType>Code</SubType>
