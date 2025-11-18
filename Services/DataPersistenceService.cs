@@ -415,5 +415,8 @@ namespace PackageManager.Services
         public bool ProgramEntryWithG { get; set; } = true;
         
         public string AddinPath { get; set; } = @"C:\ProgramData\Autodesk\Revit\Addins";
+
+        // 优先用于应用自动更新：若设置了该值，则覆盖 .config 与环境变量
+        public string UpdateServerUrl { get; set; } = null;
     }
 }

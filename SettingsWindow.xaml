@@ -48,6 +48,19 @@
                                   VerticalAlignment="Center" VerticalContentAlignment="Center" Margin="0,15,0,0"></CheckBox>
                     </StackPanel>
                 </GroupBox>
+
+                <!-- 更新服务器地址设置 -->
+                <GroupBox Header="更新服务器地址" Margin="0,0,0,20">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="用于应用自动更新的服务器根路径" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <TextBlock Text="示例：http://server:port/PackageManager/ 或 ftp://server/PackageManager/" 
+                                   Foreground="Gray" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBox x:Name="UpdateServerUrlTextBox" Text="{Binding UpdateServerUrl, UpdateSourceTrigger=PropertyChanged}" 
+                                 Padding="5"/>
+                        <TextBlock Text="留空则使用环境变量或内置回退地址" 
+                                   Foreground="Gray" FontSize="11" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </GroupBox>
                 
                 <!-- 数据管理 -->
                 <GroupBox Header="数据管理" Margin="0,0,0,20">

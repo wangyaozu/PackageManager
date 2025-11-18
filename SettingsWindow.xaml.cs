@@ -15,6 +15,7 @@ namespace PackageManager
     {
         private readonly DataPersistenceService _dataPersistenceService;
         private string _addinPath;
+        private string _updateServerUrl;
 
         private bool _programEntryWithG;
         private string _dataLocation;
@@ -24,6 +25,12 @@ namespace PackageManager
         {
             get => _addinPath;
             set => SetProperty(ref _addinPath, value);
+        }
+        
+        public string UpdateServerUrl
+        {
+            get => _updateServerUrl;
+            set => SetProperty(ref _updateServerUrl, value);
         }
         
         public bool ProgramEntryWithG
@@ -68,6 +75,7 @@ namespace PackageManager
                 
                 ProgramEntryWithG = settings?.ProgramEntryWithG ?? true;
                 AddinPath = settings?.AddinPath ?? @"C:\ProgramData\Autodesk\Revit\Addins";
+                UpdateServerUrl = settings?.UpdateServerUrl ?? string.Empty;
                 DataLocation = _dataPersistenceService.GetDataFolderPath();
             }
             catch (Exception ex)
@@ -75,6 +83,7 @@ namespace PackageManager
                 MessageBox.Show($"加载设置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 // 使用默认值
                 AddinPath = @"C:\ProgramData\Autodesk\Revit\Addins";
+                UpdateServerUrl = string.Empty;
                 DataLocation = "未知";
             }
         }
@@ -189,6 +198,7 @@ namespace PackageManager
                 if (result == MessageBoxResult.Yes)
                 {
                     AddinPath = @"C:\ProgramData\Autodesk\Revit\Addins";
+                    UpdateServerUrl = string.Empty;
                 }
             }
             catch (Exception ex)
@@ -215,7 +225,8 @@ namespace PackageManager
                 var settings = new PackageManager.Services.AppSettings
                 {
                     AddinPath = AddinPath.Trim(),
-                    ProgramEntryWithG =ProgramEntryWithG,
+                    ProgramEntryWithG = ProgramEntryWithG,
+                    UpdateServerUrl = string.IsNullOrWhiteSpace(UpdateServerUrl) ? null : UpdateServerUrl.Trim(),
                 };
 
                 _dataPersistenceService.SaveSettings(settings);

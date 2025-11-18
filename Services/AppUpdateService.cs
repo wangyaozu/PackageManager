@@ -1,5 +1,4 @@
 using System;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -12,16 +11,13 @@ namespace PackageManager.Services
 {
     public class AppUpdateService
     {
-        private readonly FtpService _ftpService = new FtpService();
+        private readonly FtpService ftpService = new FtpService();
+
+        private readonly DataPersistenceService dataPersistenceService = new DataPersistenceService();
 
         public async Task CheckAndPromptUpdateAsync(Window owner = null)
         {
-            string serverUrl = ConfigurationManager.AppSettings["UpdateServerUrl"]; // 例如：ftp://server/PackageManager/
-            if (string.IsNullOrWhiteSpace(serverUrl))
-            {
-                LoggingService.LogWarning("未配置 UpdateServerUrl，跳过应用自动更新检查。");
-                return;
-            }
+            string serverUrl = GetUpdateServerUrl();
 
             Version current = GetCurrentVersion();
             Version latest = null;
@@ -29,12 +25,12 @@ namespace PackageManager.Services
 
             try
             {
-                var dirs = await _ftpService.GetDirectoriesAsync(serverUrl);
+                var dirs = await ftpService.GetDirectoriesAsync(serverUrl);
                 var candidates = dirs
-                    .Select(d => new { d, ver = TryParseVersionFromDir(d) })
-                    .Where(x => x.ver != null)
-                    .OrderBy(x => x.ver)
-                    .ToList();
+                                 .Select(d => new { d, ver = TryParseVersionFromDir(d) })
+                                 .Where(x => x.ver != null)
+                                 .OrderBy(x => x.ver)
+                                 .ToList();
 
                 if (candidates.Count == 0)
                 {
@@ -51,14 +47,18 @@ namespace PackageManager.Services
                 return;
             }
 
-            if (latest == null || current == null || latest <= current)
+            if ((latest == null) || (current == null) || (latest <= current))
             {
                 LoggingService.LogInfo($"当前已是最新版本：{current}");
                 return;
             }
 
             var message = $"检测到新版本：{latest}，当前版本：{current}。是否立即更新？";
-            var result = MessageBox.Show(owner ?? Application.Current.MainWindow, message, "发现新版本", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            var result = MessageBox.Show(owner ?? Application.Current.MainWindow,
+                                         message,
+                                         "发现新版本",
+                                         MessageBoxButton.YesNo,
+                                         MessageBoxImage.Information);
             if (result != MessageBoxResult.Yes)
             {
                 return;
@@ -77,14 +77,14 @@ namespace PackageManager.Services
                 var script = BuildReplaceScript(oldExe, tempExe);
                 File.WriteAllText(scriptPath, script);
 
-                ToastService.ShowToast("更新开始", "正在切换到新版本……", "Info", 3000);
+                ToastService.ShowToast("更新开始", "正在切换到新版本……");
 
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = $"/c \"{scriptPath}\"",
                     UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
+                    WindowStyle = ProcessWindowStyle.Hidden,
                 });
 
                 Application.Current.Shutdown();
@@ -112,14 +112,19 @@ namespace PackageManager.Services
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(dir)) return null;
+                if (string.IsNullOrWhiteSpace(dir))
+                {
+                    return null;
+                }
+
                 var cleaned = dir.Trim('/').Trim();
                 if (cleaned.StartsWith("v", StringComparison.OrdinalIgnoreCase))
                 {
                     cleaned = cleaned.Substring(1);
                 }
+
                 // 去掉可能的后缀，如 _log
-                var basePart = cleaned.Split(new[] { '_', '-' })[0];
+                var basePart = cleaned.Split('_', '-')[0];
                 return Version.Parse(basePart);
             }
             catch
@@ -151,6 +156,7 @@ namespace PackageManager.Services
                 {
                     // ignore
                 }
+
                 await client.DownloadFileTaskAsync(new Uri(url), localPath);
             }
         }
@@ -172,9 +178,31 @@ namespace PackageManager.Services
                 "copy /Y %NEW% %OLD% >nul",
                 "start \"\" %OLD%",
                 "del /F /Q \"%~f0\" >nul 2>&1",
-                "endlocal"
+                "endlocal",
             };
             return string.Join(Environment.NewLine, lines);
         }
+
+        private string GetUpdateServerUrl()
+        {
+            try
+            {
+                var settings = dataPersistenceService.LoadSettings();
+                var fromJson = settings?.UpdateServerUrl;
+                if (!string.IsNullOrWhiteSpace(fromJson))
+                {
+                    LoggingService.LogInfo("使用本地设置文件中的 UpdateServerUrl。");
+                    return fromJson;
+                }
+            }
+            catch (Exception jsonEx)
+            {
+                LoggingService.LogInfo($"读取本地设置失败。详情：{jsonEx.Message}");
+            }
+
+            return FallbackUpdateServerUrl;
+        }
+
+        private const string FallbackUpdateServerUrl = "http://192.168.0.215:8001/PackageManager/";
     }
 }
