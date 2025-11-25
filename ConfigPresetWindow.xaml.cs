@@ -167,8 +167,8 @@ namespace PackageManager
             {
                 CustomPresets.Add(win.ResultPreset);
 
-                // 保持“添加”卡片始终在最后
-                PresetItems.Insert(Math.Max(PresetItems.Count - 1, 0), win.ResultPreset);
+                // 保持“添加”卡片始终在最前
+                PresetItems.Add(win.ResultPreset);
                 try
                 {
                     ConfigPresetStore.Save(CustomPresets);
@@ -224,7 +224,7 @@ namespace PackageManager
                 PresetItems.Remove(preset);
                 ConfigPresetStore.Save(CustomPresets);
 
-                // 确保“添加”卡片在最后
+                // 确保“添加”卡片在最前
                 RebuildPresetItems();
 
                 // 如果删除的是当前选中项，重置选中到第一个配置项
@@ -318,8 +318,8 @@ namespace PackageManager
                 PresetItems.Add(p);
             }
 
-            // 最后追加添加卡片占位
-            PresetItems.Add(new AddCardPlaceholder());
+            // 最前追加卡片占位
+            PresetItems.Insert(0,new AddCardPlaceholder());
         }
 
         private void TrySelectInitialPreset()

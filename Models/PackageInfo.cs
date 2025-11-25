@@ -244,7 +244,8 @@ namespace PackageManager.Models
                         ButtonWidth = 80,
                         ButtonHeight = 26,
                         ButtonCommandProperty = "UpdateCommand",
-                        IsReadOnlyProperty = "IsReadOnly")]
+                        IsReadOnlyProperty = "IsReadOnly",
+                        IsVisible = false)]
         public string DoWork { get; set; }
 
         /// <summary>
@@ -274,7 +275,8 @@ namespace PackageManager.Models
                           Width = "135",
                           IsReadOnlyProperty = "IsReadOnly",
                           ComboBoxDisplayMemberPath = "DisPlayName",
-                          ComboBoxSelectedValuePath = "DisPlayName")]
+                          ComboBoxSelectedValuePath = "DisPlayName",
+                          IsVisible = false)]
         public string SelectedExecutableVersion
         {
             get => selectedExecutableVersion;
@@ -293,7 +295,8 @@ namespace PackageManager.Models
                         ButtonWidth = 80,
                         ButtonHeight = 26,
                         ButtonCommandProperty = "OpenPathCommand",
-                        IsReadOnlyProperty = "IsReadOnly")]
+                        IsReadOnlyProperty = "IsReadOnly",
+                        IsVisible = false)]
         public string OpenPath { get; set; }
 
         /// <summary>
@@ -303,7 +306,8 @@ namespace PackageManager.Models
                              11,
                              DisplayName = "配置操作",
                              Width = "300",
-                             ButtonSpacing = 15)]
+                             ButtonSpacing = 15,
+                             IsVisible = false)]
         public string ConfigOperation { get; set; }
 
         public bool IsEnabled => !IsReadOnly;
@@ -317,7 +321,8 @@ namespace PackageManager.Models
                         ButtonHeight = 26,
                         ButtonCommandProperty = "RunEmbeddedToolCommand",
                         IsReadOnlyProperty = "IsReadOnly",
-                        ToolTip = "进行签名加密的校验，并输出结果")]
+                        ToolTip = "进行签名加密的校验，并输出结果",
+                        IsVisible = false)]
         public string SignatureEncryption { get; set; }
 
         /// <summary>
@@ -462,7 +467,8 @@ namespace PackageManager.Models
                           "AvailablePackages",
                           Width = "320",
                           IsReadOnlyProperty = "IsReadOnly",
-                          ContentAlign = HorizontalAlignment.Left)]
+                          ContentAlign = HorizontalAlignment.Left,
+                          IsVisible = false)]
         public string UploadPackageName
         {
             get => uploadPackageName;

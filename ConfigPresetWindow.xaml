@@ -6,22 +6,22 @@
         xmlns:models="clr-namespace:PackageManager.Models"
         xmlns:local="clr-namespace:PackageManager"
         xmlns:navigation="clr-namespace:CustomControlLibrary.CustomControl.Controls.Navigation;assembly=CustomControlLibrary"
-        Title="切换配置" Height="560" Width="1000"
+        Title="切换配置" Height="660" Width="1000"
         ResizeMode="CanResize" WindowStartupLocation="CenterOwner" Loaded="Window_Loaded">
     <Window.Resources>
-        <local:UrlWrapConverter x:Key="UrlWrapConverter"/>
+        <local:UrlWrapConverter x:Key="UrlWrapConverter" />
     </Window.Resources>
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- 标题 -->
-        <TextBlock Grid.Row="0" Text="请选择要应用的预设配置" FontSize="18" FontWeight="Bold"/>
+        <TextBlock Grid.Row="0" Text="请选择要应用的预设配置" FontSize="18" FontWeight="Bold" />
 
-        <!-- 可滚动的统一卡片列表（内置 + 自定义 + 添加占位，保持添加在最后） -->
+        <!-- 可滚动的统一卡片列表（内置 + 自定义 + 添加占位，保持添加在最前） -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,12,0,12">
             <ItemsControl ItemsSource="{Binding PresetItems}">
                 <ItemsControl.ItemsPanel>
@@ -75,7 +75,7 @@
                         </Border.ContextMenu>
                     </Border>
                 </DataTemplate>
-                <!-- 添加卡片模板：始终置于最后 -->
+                <!-- 添加卡片模板：始终置于最前 -->
                 <DataTemplate DataType="{x:Type local:AddCardPlaceholder}">
                     <Border BorderBrush="#DDD" BorderThickness="1" Padding="10" Margin="0,0,10,10" Width="280" Height="220" Background="#F9F9F9" MouseLeftButtonUp="AddPresetCard_MouseLeftButtonUp" Cursor="Hand">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
