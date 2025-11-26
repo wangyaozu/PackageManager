@@ -126,6 +126,19 @@ namespace PackageManager
             });
         }
 
+        private void OpenDnsSettingsWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var win = new DnsSettingsWindow { Owner = this };
+                win.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                Services.LoggingService.LogError(ex, "打开DNS设置窗口失败");
+            }
+        }
+
         /// <summary>
         /// 更新包的可执行文件版本信息
         /// </summary>

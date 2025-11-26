@@ -312,6 +312,8 @@ namespace PackageManager.Models
 
         public bool IsEnabled => !IsReadOnly;
 
+        public bool IsTeamworkMasterDevelop => string.Equals(ProductName, "TeamworkMaster(Develop)", StringComparison.OrdinalIgnoreCase);
+
         public bool? SupportsConfigOpsOverride { get; set; }
 
         public bool SupportsConfigOps

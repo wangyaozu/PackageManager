@@ -8,7 +8,7 @@
         xmlns:controls="clr-namespace:CustomControlLibrary.CustomControl.Controls;assembly=CustomControlLibrary"
         xmlns:button="clr-namespace:CustomControlLibrary.CustomControl.Controls.Button;assembly=CustomControlLibrary"
         mc:Ignorable="d"
-        Title="包管理器" Height="700" Width="1300" MinWidth="960"
+        Title="包管理器" Height="700" Width="1350" MinWidth="960"
         ResizeMode="CanResize" WindowStartupLocation="CenterScreen" AllowDrop="True">
     <Window.Resources>
     </Window.Resources>
@@ -41,7 +41,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="450" />
+                <ColumnDefinition Width="500" />
             </Grid.ColumnDefinitions>
 
             <C:CDataGrid x:Name="PackageDataGrid"
@@ -85,8 +85,9 @@
                     <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                         <button:CButton Content="参数目录" Command="{Binding LatestActivePackage.OpenParameterConfigCommand}" Width="80" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
                         <button:CButton Content="模式切换" Command="{Binding LatestActivePackage.ChangeModeToDebugCommand}" Width="80" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
-                        <button:CButton Content="签名加密校验" Command="{Binding LatestActivePackage.RunEmbeddedToolCommand}" Width="120" IsEnabled="{Binding LatestActivePackage.CanRunSignatureEncryption}" />
+                        <button:CButton Content="签名加密" Command="{Binding LatestActivePackage.RunEmbeddedToolCommand}" Width="100" IsEnabled="{Binding LatestActivePackage.CanRunSignatureEncryption}" />
                         <button:CButton Content="CSV加解密" Width="100" Margin="0,0,8,0" Click="OpenCsvCryptoWindowButton_Click"/>
+                        <button:CButton Content="DNS" Width="80" Margin="0,0,8,0" Click="OpenDnsSettingsWindowButton_Click" IsEnabled="{Binding LatestActivePackage.IsTeamworkMasterDevelop}"/>
                     </StackPanel>
                     <controls:CProgressBar Minimum="0" Maximum="100" Value="{Binding LatestActivePackage.Progress}" Height="16" Margin="0,16,0,0" />
                     <controls:CTextBlock Text="{Binding LatestActivePackage.StatusText}" Foreground="#6B6B6B" Margin="0,8,0,0" />
