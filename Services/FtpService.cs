@@ -116,13 +116,14 @@ namespace PackageManager.Services
             }
             
             // 按照版本号排序，格式为v11.3.2.0或v11.3.2或v11.3.2.0_log，尾部的_log等后缀不参与排序
+            directories.RemoveAll(x => x.Contains("父目录"));
             return directories
                    .Select(d => new
                    {
                        Original = d,
-                       Version = Regex.Replace(d, @"^(v\d+(\.\d+)*).*", "$1"),
+                       Version = Regex.Match(d, @"^[vV]\d+(\.\d+)*", RegexOptions.IgnoreCase).Value,
                    })
-                   .OrderBy(x => Version.Parse(x.Version.TrimStart('v')))
+                   .OrderBy(x => Version.Parse(x.Version.TrimStart('v', 'V')))
                    .ThenBy(x => x.Original)
                    .Select(x => x.Original)
                    .ToList();

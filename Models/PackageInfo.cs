@@ -312,6 +312,19 @@ namespace PackageManager.Models
 
         public bool IsEnabled => !IsReadOnly;
 
+        public bool SupportsConfigOps
+        {
+            get
+            {
+                var name = ProductName ?? string.Empty;
+                if (string.Equals(name, "BuildMaster(Dazzle)", StringComparison.OrdinalIgnoreCase)) return false;
+                if (string.Equals(name, "TeamworkMaster(Develop)", StringComparison.OrdinalIgnoreCase)) return false;
+                return true;
+            }
+        }
+
+        public bool ConfigOpsEnabled => SupportsConfigOps && IsEnabled;
+
         [DataGridButton(12,
                         DisplayName = "签名加密",
                         Width = "100",
@@ -333,7 +346,7 @@ namespace PackageManager.Models
             new ButtonConfig
             {
                 Text = "目录", Width = 60, Height = 26, CommandProperty = nameof(OpenParameterConfigCommand), ToolTip = "打开参数配置文件夹",
-                IsEnabledProperty = $"{nameof(IsEnabled)}",
+                IsEnabledProperty = $"{nameof(ConfigOpsEnabled)}",
             },
 
             // new ButtonConfig
@@ -344,13 +357,13 @@ namespace PackageManager.Models
             new ButtonConfig
             {
                 Text = "模式切换", Width = 60, Height = 26, CommandProperty = nameof(ChangeModeToDebugCommand), ToolTip = "切换调试模式与正常模式",
-                IsEnabledProperty = $"{nameof(IsEnabled)}",
+                IsEnabledProperty = $"{nameof(ConfigOpsEnabled)}",
             },
 
             new ButtonConfig
             {
                 Text = "切换配置", Width = 80, Height = 26, CommandProperty = nameof(ChangeConfigPresetCommand), ToolTip = "选择并应用预设配置到 ServerInfo.ini",
-                IsEnabledProperty = $"{nameof(IsEnabled)}",
+                IsEnabledProperty = $"{nameof(ConfigOpsEnabled)}",
             },
         };
 
@@ -359,7 +372,7 @@ namespace PackageManager.Models
         /// </summary>
         public ICommand OpenParameterConfigCommand
         {
-            get => openParameterConfigCommand ?? (openParameterConfigCommand = new RelayCommand(ExecuteOpenParameterConfig));
+            get => openParameterConfigCommand ?? (openParameterConfigCommand = new RelayCommand(ExecuteOpenParameterConfig, () => SupportsConfigOps));
 
             set => SetProperty(ref openParameterConfigCommand, value);
         }
@@ -379,7 +392,7 @@ namespace PackageManager.Models
         /// </summary>
         public ICommand ChangeModeToDebugCommand
         {
-            get => changeModeToDebugCommand ?? (changeModeToDebugCommand = new RelayCommand(ExecuteToggleDebugMode));
+            get => changeModeToDebugCommand ?? (changeModeToDebugCommand = new RelayCommand(ExecuteToggleDebugMode, () => SupportsConfigOps));
 
             set => SetProperty(ref changeModeToDebugCommand, value);
         }
@@ -391,7 +404,7 @@ namespace PackageManager.Models
 
         public ICommand ChangeConfigPresetCommand
         {
-            get => changeConfigPresetCommand ?? (changeConfigPresetCommand = new RelayCommand(ExecuteChangeConfigPreset));
+            get => changeConfigPresetCommand ?? (changeConfigPresetCommand = new RelayCommand(ExecuteChangeConfigPreset, () => SupportsConfigOps));
 
             set => SetProperty(ref changeConfigPresetCommand, value);
         }

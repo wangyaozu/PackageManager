@@ -331,6 +331,24 @@ namespace PackageManager
                     Status = PackageStatus.Ready,
                     StatusText = string.Empty,
                 },
+                new PackageInfo
+                {
+                    ProductName = "BuildMaster(Dazzle)",
+                    Version = string.Empty,
+                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(Dazzle)/Dazzle.RevitApp/",
+                    LocalPath = @"C:\红瓦科技\BuildMaster(Dazzle)Develop",
+                    Status = PackageStatus.Ready,
+                    StatusText = string.Empty,
+                },
+                new PackageInfo
+                {
+                    ProductName = "TeamworkMaster(Develop)",
+                    Version = string.Empty,
+                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/TeamworkMaster/",
+                    LocalPath = @"C:\红瓦科技\TeamworkMaster(Develop)",
+                    Status = PackageStatus.Ready,
+                    StatusText = string.Empty,
+                },
             };
 
             // 为每个PackageInfo订阅事件
@@ -352,6 +370,10 @@ namespace PackageManager
                     for (var index = 0; index < Packages.Count; index++)
                     {
                         var package = Packages[index];
+                        if (index >= stateData.Packages.Count)
+                        {
+                            continue;
+                        }
                         var savedState = stateData.Packages[index];
                         if (savedState != null)
                         {
