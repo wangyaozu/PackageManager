@@ -312,10 +312,13 @@ namespace PackageManager.Models
 
         public bool IsEnabled => !IsReadOnly;
 
+        public bool? SupportsConfigOpsOverride { get; set; }
+
         public bool SupportsConfigOps
         {
             get
             {
+                if (SupportsConfigOpsOverride.HasValue) return SupportsConfigOpsOverride.Value;
                 var name = ProductName ?? string.Empty;
                 if (string.Equals(name, "BuildMaster(Dazzle)", StringComparison.OrdinalIgnoreCase)) return false;
                 if (string.Equals(name, "TeamworkMaster(Develop)", StringComparison.OrdinalIgnoreCase)) return false;

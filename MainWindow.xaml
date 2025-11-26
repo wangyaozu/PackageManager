@@ -33,6 +33,7 @@
                 <button:CButton Content="设置" Margin="0,0,8,0" Padding="10,6" Click="SettingsButton_Click" />
                 <button:CButton Content="路径" Margin="0,0,8,0" Padding="10,6" Click="LocalPathSettingsButton_Click" />
                 <button:CButton Content="日志" Padding="10,6" Click="OpenLogViewerButton_Click" />
+                <button:CButton Content="产品日志" Margin="8,0,0,0" Padding="10,6" Click="OpenProductLogButton_Click" />
             </StackPanel>
         </Grid>
 

@@ -49,6 +49,7 @@ namespace PackageManager
             
             // 设置PackageInfo的静态DataPersistenceService引用
             PackageInfo.DataPersistenceService = _dataPersistenceService;
+            FtpService.DataService = _dataPersistenceService;
             
             DataContext = this;
             InitializePackages();
@@ -259,97 +260,21 @@ namespace PackageManager
 
         private void InitializePackages()
         {
-            Packages = new ObservableCollection<PackageInfo>
+            var builtIns = _dataPersistenceService.GetBuiltInPackageConfigs();
+            var customs = _dataPersistenceService.LoadPackageConfigs();
+            var all = builtIns.Concat(customs ?? Enumerable.Empty<DataPersistenceService.PackageConfigItem>()).ToList();
+
+            Packages = new ObservableCollection<PackageInfo>(all.Select(ci => new PackageInfo
             {
-                new PackageInfo
-                {
-                    ProductName = "MaxiBIM（CAB）Develop",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/HWMaxiBIMCAB/",
-                    LocalPath = @"C:\红瓦科技\MaxiBIM（CAB）Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = "就绪",
-                    UploadPackageName = string.Empty,
-                },
-                new PackageInfo
-                {
-                    ProductName = "MaxiBIM（MEP）Develop",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(MEP)/",
-                    LocalPath = @"C:\红瓦科技\MaxiBIM（MEP）Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = "就绪",
-                    UploadPackageName = string.Empty,
-                },
-                new PackageInfo
-                {
-                    ProductName = "MaxiBIM（PMEP）Develop",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/MaxiBIM(PMEP)/",
-                    LocalPath = @"C:\红瓦科技\MaxiBIM（PMEP）Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = "就绪",
-                    UploadPackageName = string.Empty,
-                },
-                new PackageInfo
-                {
-                    ProductName = "MaxiBIM（Duct）Develop",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/HWMaxiBIMDUCT/",
-                    LocalPath = @"C:\红瓦科技\MaxiBIM（Duct）Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = "就绪",
-                    UploadPackageName = string.Empty,
-                },
-                
-                new PackageInfo
-                {
-                    ProductName = "建模大师（CABE）Develop",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(CABE)/",
-                    LocalPath = @"C:\红瓦科技\建模大师（CABE）Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = "就绪",
-                    UploadPackageName = string.Empty,
-                },
-                new PackageInfo
-                {
-                    ProductName = "建模大师（钢构）Develop",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(ST)/",
-                    LocalPath = @"C:\红瓦科技\建模大师（钢构）Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = "就绪",
-                    UploadPackageName = string.Empty,
-                },
-                new PackageInfo
-                {
-                    ProductName = "建模大师（施工）Develop",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(CST)/",
-                    LocalPath = @"C:\红瓦科技\建模大师（施工）Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = string.Empty,
-                },
-                new PackageInfo
-                {
-                    ProductName = "BuildMaster(Dazzle)",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(Dazzle)/Dazzle.RevitApp/",
-                    LocalPath = @"C:\红瓦科技\BuildMaster(Dazzle)Develop",
-                    Status = PackageStatus.Ready,
-                    StatusText = string.Empty,
-                },
-                new PackageInfo
-                {
-                    ProductName = "TeamworkMaster(Develop)",
-                    Version = string.Empty,
-                    FtpServerPath = "http://doc-dev.hongwa.cc:8001/TeamworkMaster/",
-                    LocalPath = @"C:\红瓦科技\TeamworkMaster(Develop)",
-                    Status = PackageStatus.Ready,
-                    StatusText = string.Empty,
-                },
-            };
+                ProductName = ci.ProductName,
+                Version = string.Empty,
+                FtpServerPath = ci.FtpServerPath,
+                LocalPath = ci.LocalPath,
+                Status = PackageStatus.Ready,
+                StatusText = "就绪",
+                UploadPackageName = string.Empty,
+                SupportsConfigOpsOverride = ci.SupportsConfigOps,
+            }));
 
             // 为每个PackageInfo订阅事件
             foreach (var package in Packages)
@@ -674,6 +599,50 @@ namespace PackageManager
             }
         }
 
+        private void OpenPackageConfigButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var path = _dataPersistenceService.GetPackagesConfigPath();
+                if (!File.Exists(path))
+                {
+                    File.WriteAllText(path, "[]");
+                }
+                Process.Start(path);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "打开包配置文件失败");
+                MessageBox.Show($"打开包配置文件失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OpenProductLogButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var pkg = LatestActivePackage;
+                if (pkg == null)
+                {
+                    MessageBox.Show("请先选择一个产品包", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                
+                var baseDir = Path.Combine(Path.GetTempPath(),"HongWaSoftLog");
+                if (string.IsNullOrWhiteSpace(baseDir) || !Directory.Exists(baseDir))
+                {
+                    MessageBox.Show("本地路径不存在，无法打开日志", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                
+                Process.Start(baseDir);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "打开产品日志目录失败");
+                MessageBox.Show($"打开产品日志目录失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         private void OpenCsvCryptoWindowButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -688,7 +657,5 @@ namespace PackageManager
                 MessageBox.Show($"打开CSV加解密窗口失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-        
     }
 }

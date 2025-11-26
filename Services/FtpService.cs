@@ -13,6 +13,7 @@ namespace PackageManager.Services
     /// </summary>
     public class FtpService
     {
+        public static DataPersistenceService DataService { get; set; }
         /// <summary>
         /// 异步获取服务器路径下的所有文件夹名称
         /// </summary>
@@ -117,6 +118,11 @@ namespace PackageManager.Services
             
             // 按照版本号排序，格式为v11.3.2.0或v11.3.2或v11.3.2.0_log，尾部的_log等后缀不参与排序
             directories.RemoveAll(x => x.Contains("父目录"));
+            var filterLog = DataService?.LoadSettings()?.FilterLogDirectories ?? true;
+            if (filterLog)
+            {
+                directories.RemoveAll(x => x.IndexOf("log", StringComparison.OrdinalIgnoreCase) >= 0);
+            }
             return directories
                    .Select(d => new
                    {

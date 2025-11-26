@@ -39,6 +39,7 @@ namespace PackageManager.Services
         private readonly string _dataFilePath;
         private readonly string _mainWindowStateFilePath;
         private readonly string _settingsFilePath;
+        private readonly string _packagesFilePath;
         private readonly string _appFolder;
         private readonly JsonSerializerSettings _jsonSettings;
 
@@ -56,11 +57,73 @@ namespace PackageManager.Services
             _dataFilePath = Path.Combine(_appFolder, "application_cache.json");
             _mainWindowStateFilePath = Path.Combine(_appFolder, "main_window_state.json");
             _settingsFilePath = Path.Combine(_appFolder, "settings.json");
+            _packagesFilePath = Path.Combine(_appFolder, "packages.json");
             
             _jsonSettings = new JsonSerializerSettings
             {
                 Formatting = Formatting.Indented,
                 NullValueHandling = NullValueHandling.Ignore
+            };
+        }
+
+        public class PackageConfigItem
+        {
+            public string ProductName { get; set; }
+            public string FtpServerPath { get; set; }
+            public string LocalPath { get; set; }
+            public bool SupportsConfigOps { get; set; } = true;
+        }
+
+        public List<PackageConfigItem> LoadPackageConfigs()
+        {
+            try
+            {
+                if (!File.Exists(_packagesFilePath))
+                {
+                    return new List<PackageConfigItem>();
+                }
+                var json = File.ReadAllText(_packagesFilePath);
+                var list = JsonConvert.DeserializeObject<List<PackageConfigItem>>(json, _jsonSettings);
+                return list ?? new List<PackageConfigItem>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载包配置失败: {ex.Message}");
+                return new List<PackageConfigItem>();
+            }
+        }
+
+        public bool SavePackageConfigs(IEnumerable<PackageConfigItem> items)
+        {
+            try
+            {
+                var list = items?.ToList() ?? new List<PackageConfigItem>();
+                var json = JsonConvert.SerializeObject(list, _jsonSettings);
+                File.WriteAllText(_packagesFilePath, json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存包配置失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        public string GetPackagesConfigPath() => _packagesFilePath;
+
+        public List<PackageConfigItem> GetBuiltInPackageConfigs()
+        {
+            return new List<PackageConfigItem>
+            {
+                new PackageConfigItem { ProductName = "MaxiBIM（CAB）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/HWMaxiBIMCAB/", LocalPath = @"C:\红瓦科技\MaxiBIM（CAB）Develop", SupportsConfigOps = true },
+                new PackageConfigItem { ProductName = "MaxiBIM（MEP）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(MEP)/", LocalPath = @"C:\红瓦科技\MaxiBIM（MEP）Develop", SupportsConfigOps = true },
+                new PackageConfigItem { ProductName = "MaxiBIM（PMEP）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/MaxiBIM(PMEP)/", LocalPath = @"C:\红瓦科技\MaxiBIM（PMEP）Develop", SupportsConfigOps = true },
+                new PackageConfigItem { ProductName = "MaxiBIM（Duct）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/HWMaxiBIMDUCT/", LocalPath = @"C:\红瓦科技\MaxiBIM（Duct）Develop", SupportsConfigOps = true },
+                new PackageConfigItem { ProductName = "建模大师（CABE）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(CABE)/", LocalPath = @"C:\红瓦科技\建模大师（CABE）Develop", SupportsConfigOps = true },
+                new PackageConfigItem { ProductName = "建模大师（钢构）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(ST)/", LocalPath = @"C:\红瓦科技\建模大师（钢构）Develop", SupportsConfigOps = true },
+                new PackageConfigItem { ProductName = "建模大师（施工）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(CST)/", LocalPath = @"C:\红瓦科技\建模大师（施工）Develop", SupportsConfigOps = true },
+                new PackageConfigItem { ProductName = "BuildMaster(Dazzle)", FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(Dazzle)/Dazzle.RevitApp/", LocalPath = @"C:\红瓦科技\BuildMaster(Dazzle)Develop", SupportsConfigOps = false },
+                new PackageConfigItem { ProductName = "TeamworkMaster(Develop)", FtpServerPath = "http://doc-dev.hongwa.cc:8001/TeamworkMaster/", LocalPath = @"C:\红瓦科技\TeamworkMaster(Develop)", SupportsConfigOps = false },
             };
         }
 
@@ -418,5 +481,8 @@ namespace PackageManager.Services
 
         // 优先用于应用自动更新：若设置了该值，则覆盖 .config 与环境变量
         public string UpdateServerUrl { get; set; } = null;
+
+        // 拉取包目录时是否过滤包含 'log' 的目录
+        public bool FilterLogDirectories { get; set; } = true;
     }
 }

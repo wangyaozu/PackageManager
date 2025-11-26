@@ -16,6 +16,7 @@ namespace PackageManager
         private readonly DataPersistenceService _dataPersistenceService;
         private string _addinPath;
         private string _updateServerUrl;
+        private bool _filterLogDirectories;
 
         private bool _programEntryWithG;
         private string _dataLocation;
@@ -37,6 +38,12 @@ namespace PackageManager
         {
             get => _programEntryWithG;
             set => SetProperty(ref _programEntryWithG, value);
+        }
+
+        public bool FilterLogDirectories
+        {
+            get => _filterLogDirectories;
+            set => SetProperty(ref _filterLogDirectories, value);
         }
 
         public string DataLocation
@@ -76,6 +83,7 @@ namespace PackageManager
                 ProgramEntryWithG = settings?.ProgramEntryWithG ?? true;
                 AddinPath = settings?.AddinPath ?? @"C:\ProgramData\Autodesk\Revit\Addins";
                 UpdateServerUrl = settings?.UpdateServerUrl ?? string.Empty;
+                FilterLogDirectories = settings?.FilterLogDirectories ?? true;
                 DataLocation = _dataPersistenceService.GetDataFolderPath();
             }
             catch (Exception ex)
@@ -227,6 +235,7 @@ namespace PackageManager
                     AddinPath = AddinPath.Trim(),
                     ProgramEntryWithG = ProgramEntryWithG,
                     UpdateServerUrl = string.IsNullOrWhiteSpace(UpdateServerUrl) ? null : UpdateServerUrl.Trim(),
+                    FilterLogDirectories = FilterLogDirectories,
                 };
 
                 _dataPersistenceService.SaveSettings(settings);
@@ -238,6 +247,19 @@ namespace PackageManager
             catch (Exception ex)
             {
                 MessageBox.Show($"保存设置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OpenPackagesConfigButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var win = new PackageConfigWindow { Owner = this };
+                win.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开包配置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

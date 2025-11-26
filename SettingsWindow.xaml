@@ -61,6 +61,22 @@
                                    Foreground="Gray" FontSize="11" Margin="0,5,0,0"/>
                     </StackPanel>
                 </GroupBox>
+
+                <GroupBox Header="目录过滤" Margin="0,0,0,20">
+                    <StackPanel Margin="10">
+                        <CheckBox Content="拉取版本目录时过滤含 log 的目录" IsChecked="{Binding FilterLogDirectories, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="默认启用，过滤如 v11.3.2.0_log 等目录" Foreground="Gray" FontSize="11" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="包配置" Margin="0,0,0,20">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="管理包配置（内置不可修改，自定义可新增/删除）" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="包配置管理" Padding="10,5" Click="OpenPackagesConfigButton_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
                 
                 <!-- 数据管理 -->
                 <GroupBox Header="数据管理" Margin="0,0,0,20">

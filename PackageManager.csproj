@@ -74,6 +74,8 @@
         </ApplicationDefinition>
         <Compile Include="AddPresetWindow.xaml.cs" />
         <Compile Include="Models\ConfigPreset.cs" />
+        <Compile Include="PackageConfigWindow.xaml.cs" />
+        <Compile Include="PackageItem.cs" />
         <Compile Include="Services\AdminElevationService.cs" />
         <Compile Include="Services\ConfigPresetStore.cs" />
         <Compile Include="Services\DebugSettingsService.cs" />
@@ -105,12 +107,17 @@
         </Page>
         <Page Include="LocalPathSettingsWindow.xaml" />
         <Page Include="ConfigPresetWindow.xaml" />
+        <Page Include="PackageEditWindow.xaml" />
         <Compile Include="App.xaml.cs">
             <DependentUpon>App.xaml</DependentUpon>
             <SubType>Code</SubType>
         </Compile>
         <Compile Include="MainWindow.xaml.cs">
             <DependentUpon>MainWindow.xaml</DependentUpon>
+            <SubType>Code</SubType>
+        </Compile>
+        <Compile Include="PackageEditWindow.xaml.cs">
+            <DependentUpon>PackageEditWindow.xaml</DependentUpon>
             <SubType>Code</SubType>
         </Compile>
         <Compile Include="CsvCryptoWindow.xaml.cs">
@@ -129,6 +136,7 @@
         <Compile Include="Services\FtpService.cs" />
         <Compile Include="Services\PackageUpdateService.cs" />
         <Compile Include="Converters\StatusConverters.cs" />
+        <Page Include="PackageConfigWindow.xaml" />
         <Page Include="SettingsWindow.xaml" />
     </ItemGroup>
     <ItemGroup>
@@ -149,11 +157,26 @@
         <None Include="App.config"/>
         <None Include="packages.config" />
     </ItemGroup>
-    <ItemGroup>
-        <Reference Include="CustomControlLibrary">
-            <HintPath>E:\TestCustomControl\CustomControlLibrary\bin\Debug\CustomControlLibrary.dll</HintPath>
-        </Reference>
-    </ItemGroup>
+  <ItemGroup>
+    <Reference Include="CustomControlLibrary">
+      <HintPath>E:\TestCustomControl\CustomControlLibrary\bin\Debug\CustomControlLibrary.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <PropertyGroup>
+    <Sign_Enabled>false</Sign_Enabled>
+    <SignToolExe>signtool.exe</SignToolExe>
+    <Sign_TimestampUrl>http://timestamp.digicert.com</Sign_TimestampUrl>
+    <Sign_CertPath></Sign_CertPath>
+    <Sign_CertPassword></Sign_CertPassword>
+    <Sign_SubjectName></Sign_SubjectName>
+  </PropertyGroup>
+  <Target Name="AuthenticodeSign" AfterTargets="AfterBuild" Condition="'$(Sign_Enabled)'=='true'">
+    <Message Text="Signing $(TargetPath)" Importance="high" />
+    <Exec Condition="'$(Sign_CertPath)' != ''" Command="&quot;$(SignToolExe)&quot; sign /f &quot;$(Sign_CertPath)&quot; /p &quot;$(Sign_CertPassword)&quot; /tr &quot;$(Sign_TimestampUrl)&quot; /td SHA256 /fd SHA256 &quot;$(TargetPath)&quot;" />
+    <Exec Condition="'$(Sign_CertPath)' == '' AND '$(Sign_SubjectName)' != ''" Command="&quot;$(SignToolExe)&quot; sign /n &quot;$(Sign_SubjectName)&quot; /tr &quot;$(Sign_TimestampUrl)&quot; /td SHA256 /fd SHA256 &quot;$(TargetPath)&quot;" />
+    <Exec Condition="'$(Sign_CertPath)' == '' AND '$(Sign_SubjectName)' == ''" Command="echo No signing certificate configured. Skipping signing." />
+    <Exec Command="&quot;$(SignToolExe)&quot; verify /pa &quot;$(TargetPath)&quot;" />
+  </Target>
     <ItemGroup>
         <!-- 将外部工具exe作为嵌入资源，确保最终仅生成本程序的exe -->
         <EmbeddedResource Include="Assets\Tools\签名加密校验20251112.exe" />
