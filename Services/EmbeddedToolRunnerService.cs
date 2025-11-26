@@ -38,7 +38,7 @@ namespace PackageManager.Services
 
             Task.Run(() =>
             {
-                Package.IsReadOnly = true;
+                Package.IsSignatureEncryptionRunning = true;
 
                 try
                 {
@@ -53,7 +53,7 @@ namespace PackageManager.Services
                         {
                             Package.StatusText = "未找到嵌入的工具资源";
                         }));
-                        Package.IsReadOnly = false;
+                        Package.IsSignatureEncryptionRunning = false;
                         return;
                     }
 
@@ -104,7 +104,7 @@ namespace PackageManager.Services
                         finally
                         {
                             process.Dispose();
-                            Package.IsReadOnly = false;
+                            Package.IsSignatureEncryptionRunning = false;
                         }
 
                         if (File.Exists(resultPath))
@@ -140,7 +140,7 @@ namespace PackageManager.Services
                         Package.StatusText = $"运行外部工具失败：{ex.Message}";
                         Package.Status = Models.PackageStatus.Error;
                     }));
-                    Package.IsReadOnly = false;
+                    Package.IsSignatureEncryptionRunning = false;
                 }
             });
         }

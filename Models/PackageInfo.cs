@@ -459,6 +459,8 @@ namespace PackageManager.Models
             {
                 SetProperty(ref isReadOnly, value);
                 OnPropertyChanged(nameof(IsEnabled));
+                OnPropertyChanged(nameof(CanRunSignatureEncryption));
+                OnPropertyChanged(nameof(ConfigOpsEnabled));
             }
         }
 
@@ -471,6 +473,22 @@ namespace PackageManager.Models
 
             set => SetProperty(ref isDebugMode, value);
         }
+
+        private bool isSignatureEncryptionRunning;
+
+        public bool IsSignatureEncryptionRunning
+        {
+            get => isSignatureEncryptionRunning;
+            set
+            {
+                if (SetProperty(ref isSignatureEncryptionRunning, value))
+                {
+                    OnPropertyChanged(nameof(CanRunSignatureEncryption));
+                }
+            }
+        }
+
+        public bool CanRunSignatureEncryption => !IsSignatureEncryptionRunning && IsEnabled;
 
         /// <summary>
         /// 包名
