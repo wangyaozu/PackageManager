@@ -34,6 +34,16 @@
                 <button:CButton Content="路径" Margin="0,0,8,0" Padding="10,6" Click="LocalPathSettingsButton_Click" />
                 <button:CButton Content="日志" Padding="10,6" Click="OpenLogViewerButton_Click" />
                 <button:CButton Content="产品日志" Margin="8,0,0,0" Padding="10,6" Click="OpenProductLogButton_Click" />
+
+                <!-- 常用网址导航 -->
+                <controls:CComboBox x:Name="CommonLinksCombo"
+                                    Width="220"
+                                    Height="30"
+                                    Margin="12,0,0,0"
+                                    ItemsSource="{Binding CommonLinks}"
+                                    DisplayMemberPath="Name"
+                                    SelectedItem="{Binding SelectedCommonLink, Mode=TwoWay}" />
+                <button:CButton Content="打开" Margin="8,0,0,0" Padding="10,6" Click="OpenSelectedLinkButton_Click" />
             </StackPanel>
         </Grid>
 

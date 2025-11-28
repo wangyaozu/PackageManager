@@ -15,9 +15,21 @@ using PackageManager.Function.DnsTool;
 using PackageManager.Function.Log;
 using PackageManager.Function.Path;
 using PackageManager.Function.Setting;
+using System.Collections.Generic;
 
 namespace PackageManager
 {
+    public class CommonLinkItem
+    {
+        public string Name { get; }
+        public string Url { get; }
+        public CommonLinkItem(string name, string url)
+        {
+            Name = name;
+            Url = url;
+        }
+    }
+    
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -29,6 +41,13 @@ namespace PackageManager
         private readonly DataPersistenceService _dataPersistenceService;
         private ObservableCollection<PackageInfo> _packages;
         private PackageInfo _latestActivePackage;
+        private CommonLinkItem _selectedCommonLink;
+        public ObservableCollection<CommonLinkItem> CommonLinks { get; } = new ObservableCollection<CommonLinkItem>();
+        public CommonLinkItem SelectedCommonLink
+        {
+            get => _selectedCommonLink;
+            set => SetProperty(ref _selectedCommonLink, value);
+        }
         
 
         public ObservableCollection<PackageInfo> Packages
@@ -58,6 +77,7 @@ namespace PackageManager
             
             DataContext = this;
             InitializePackages();
+            InitializeCommonLinks();
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
         }
@@ -79,7 +99,67 @@ namespace PackageManager
             // 加载可执行文件版本
             await LoadExecutableVersionsAsync();
         }
-        
+
+        private void InitializeCommonLinks()
+        {
+            try
+            {
+                CommonLinks.Clear();
+                CommonLinks.Add(new CommonLinkItem("JenKins", "http://192.168.0.245:8080/view/%E6%9C%BA%E7%94%B5%E9%A1%B9%E7%9B%AE%E7%BB%84/"));
+                CommonLinks.Add(new CommonLinkItem("导航", "http://192.168.0.11:9999/"));
+                SelectedCommonLink = CommonLinks.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                Services.LoggingService.LogError(ex, "初始化常用链接失败");
+            }
+        }
+
+        private void OpenSelectedLinkButton_Click(object sender, RoutedEventArgs e)
+        {
+            var item = SelectedCommonLink;
+            if (item == null)
+            {
+                MessageBox.Show("请先选择一个常用网址", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(item.Url))
+            {
+                MessageBox.Show("该常用网址尚未配置具体地址，请在设置中填写公司官网URL。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            OpenUrl(item.Url);
+        }
+
+        private void OpenUrl(string url)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    MessageBox.Show("目标链接为空", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            catch
+            {
+                try
+                {
+                    Process.Start("explorer.exe", url);
+                }
+                catch (Exception ex)
+                {
+                    Services.LoggingService.LogError(ex, "打开网址失败");
+                    MessageBox.Show($"打开网址失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         /// <summary>
         /// 加载可执行文件版本
         /// </summary>
@@ -653,7 +733,11 @@ namespace PackageManager
                     return;
                 }
                 
-                Process.Start(baseDir);
+                var win = new PackageManager.Function.Log.ProductLogsWindow(baseDir)
+                {
+                    Owner = this
+                };
+                win.ShowDialog();
             }
             catch (Exception ex)
             {

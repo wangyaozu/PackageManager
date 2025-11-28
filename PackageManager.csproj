@@ -97,6 +97,7 @@
           <DependentUpon>LogViewerWindow.xaml</DependentUpon>
           <SubType>Code</SubType>
         </Compile>
+        <Compile Include="Function\Log\ProductLogsWindow.xaml.cs" />
         <Compile Include="Function\PackageManage\PackageConfigWindow.xaml.cs" />
         <Compile Include="Function\PackageManage\PackageEditWindow.xaml.cs">
           <DependentUpon>PackageEditWindow.xaml</DependentUpon>
@@ -109,6 +110,7 @@
         <Compile Include="Function\Setting\SettingsWindow.xaml.cs" />
         <Compile Include="Models\ConfigPreset.cs" />
         <Compile Include="Models\PackageItem.cs" />
+        <Compile Include="Models\ProductLogInfo.cs" />
         <Compile Include="Services\AdminElevationService.cs" />
         <Compile Include="Services\ConfigPresetStore.cs" />
         <Compile Include="Services\DebugSettingsService.cs" />
@@ -132,6 +134,7 @@
           <Generator>MSBuild:Compile</Generator>
           <SubType>Designer</SubType>
         </Page>
+        <Page Include="Function\Log\ProductLogsWindow.xaml" />
         <Page Include="Function\PackageManage\PackageConfigWindow.xaml" />
         <Page Include="Function\PackageManage\PackageEditWindow.xaml" />
         <Page Include="Function\Path\LocalPathSettingsWindow.xaml" />
@@ -204,6 +207,7 @@
       <Folder Include="packages\" />
     </ItemGroup>
     <ItemGroup>
+      <EmbeddedResource Include="Assets\Tools\LogViewPro.exe" />
       <Content Include="FodyWeavers.xml" />
       <Content Include="FodyWeavers.xsd" />
       <Content Include="Folder.DotSettings.user" />
