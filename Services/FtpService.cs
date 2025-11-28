@@ -116,7 +116,7 @@ namespace PackageManager.Services
                 throw new Exception($"获取目录失败: {ex.Message}", ex);
             }
             
-            // 按照版本号排序，格式为v11.3.2.0或v11.3.2或v11.3.2.0_log，尾部的_log等后缀不参与排序
+            // 按照版本号排序，支持：v11.3.2.0、v11.3.2、v11.3.2.0_log、2025.09.30_v1.5.2（日期前缀不参与排序）
             directories.RemoveAll(x => x.Contains("父目录"));
             var filterLog = DataService?.LoadSettings()?.FilterLogDirectories ?? true;
             if (filterLog)
@@ -127,12 +127,38 @@ namespace PackageManager.Services
                    .Select(d => new
                    {
                        Original = d,
-                       Version = Regex.Match(d, @"^[vV]\d+(\.\d+)*", RegexOptions.IgnoreCase).Value,
+                       VersionObj = TryExtractVersionFromName(d),
                    })
-                   .OrderBy(x => Version.Parse(x.Version.TrimStart('v', 'V')))
+                   .OrderBy(x => x.VersionObj ?? new Version(0, 0))
                    .ThenBy(x => x.Original)
                    .Select(x => x.Original)
                    .ToList();
+        }
+
+        /// <summary>
+        /// 从目录名称中提取版本号，支持任意位置的 vX.Y[.Z[.W]]
+        /// 例如：2025.09.30_v1.5.2、v11.3.2.0_log、v11.3.2
+        /// 返回解析后的 Version；若未匹配到则返回 null
+        /// </summary>
+        private static Version TryExtractVersionFromName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+
+            // 匹配 v 后面的最多四段数字（Version 支持最多四段）
+            var match = Regex.Match(name, @"[vV](\d+(?:\.\d+){0,3})", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                var verText = match.Groups[1].Value;
+                try
+                {
+                    return Version.Parse(verText);
+                }
+                catch
+                {
+                    // 解析失败，不参与版本排序
+                }
+            }
+            return null;
         }
 
         /// <summary>

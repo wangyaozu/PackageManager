@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using PackageManager.Models;
 using System.Collections.ObjectModel;
 using System.Linq;
+using CustomControlLibrary.CustomControl.Controls.DataGrid.Filter;
 
 namespace PackageManager.Services
 {
@@ -30,6 +31,9 @@ namespace PackageManager.Services
     {
         public List<PackageStateData> Packages { get; set; } = new List<PackageStateData>();
         public DateTime LastSaved { get; set; } = DateTime.Now;
+        
+        // 主界面筛选条件集合用于精确还原各列筛选
+        public List<FilterCondition> PackageGridFilterConditions { get; set; } = new List<FilterCondition>();
     }
 
     /// <summary>
@@ -38,18 +42,25 @@ namespace PackageManager.Services
     public class DataPersistenceService
     {
         private readonly string _dataFilePath;
+
         private readonly string _mainWindowStateFilePath;
+
         private readonly string _settingsFilePath;
+
         private readonly string _packagesFilePath;
+
         private readonly string _appFolder;
+
         private readonly JsonSerializerSettings _jsonSettings;
+
+        private List<FilterCondition> _lastGridFilterConditions;
 
         public DataPersistenceService()
         {
             // 数据文件保存在应用程序数据目录
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             _appFolder = Path.Combine(appDataPath, "PackageManager");
-            
+
             if (!Directory.Exists(_appFolder))
             {
                 Directory.CreateDirectory(_appFolder);
@@ -59,7 +70,7 @@ namespace PackageManager.Services
             _mainWindowStateFilePath = Path.Combine(_appFolder, "main_window_state.json");
             _settingsFilePath = Path.Combine(_appFolder, "settings.json");
             _packagesFilePath = Path.Combine(_appFolder, "packages.json");
-            
+
             _jsonSettings = new JsonSerializerSettings
             {
                 Formatting = Formatting.Indented,
@@ -70,8 +81,11 @@ namespace PackageManager.Services
         public class PackageConfigItem
         {
             public string ProductName { get; set; }
+
             public string FtpServerPath { get; set; }
+
             public string LocalPath { get; set; }
+
             public bool SupportsConfigOps { get; set; } = true;
         }
 
@@ -83,6 +97,7 @@ namespace PackageManager.Services
                 {
                     return new List<PackageConfigItem>();
                 }
+
                 var json = File.ReadAllText(_packagesFilePath);
                 var list = JsonConvert.DeserializeObject<List<PackageConfigItem>>(json, _jsonSettings);
                 return list ?? new List<PackageConfigItem>();
@@ -221,6 +236,7 @@ namespace PackageManager.Services
                 {
                     File.Delete(_dataFilePath);
                 }
+
                 return true;
             }
             catch (Exception ex)
@@ -242,6 +258,7 @@ namespace PackageManager.Services
                 {
                     return File.GetLastWriteTime(_dataFilePath);
                 }
+
                 return null;
             }
             catch
@@ -260,7 +277,7 @@ namespace PackageManager.Services
             try
             {
                 var stateData = new MainWindowStateData();
-                
+
                 foreach (var package in packages)
                 {
                     var packageState = new PackageStateData
@@ -276,6 +293,9 @@ namespace PackageManager.Services
                     stateData.Packages.Add(packageState);
                 }
 
+                // 包含最近一次提取的筛选条件集合
+                stateData.PackageGridFilterConditions = _lastGridFilterConditions ?? new List<FilterCondition>();
+
                 var json = JsonConvert.SerializeObject(stateData, _jsonSettings);
                 File.WriteAllText(_mainWindowStateFilePath, json);
                 return true;
@@ -283,6 +303,25 @@ namespace PackageManager.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"保存主界面状态失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 保存主界面筛选条件集合（仅更新缓存，持久化由 SaveMainWindowState 统一执行）
+        /// </summary>
+        /// <param name="filterConditions">筛选条件集合</param>
+        /// <returns>是否保存成功（更新缓存成功）</returns>
+        public bool SaveMainWindowFilterCondition(ObservableCollection<FilterCondition> filterConditions)
+        {
+            try
+            {
+                _lastGridFilterConditions = filterConditions?.ToList() ?? new List<FilterCondition>();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存筛选条件集合失败: {ex.Message}");
                 return false;
             }
         }
@@ -302,6 +341,9 @@ namespace PackageManager.Services
 
                 var json = File.ReadAllText(_mainWindowStateFilePath);
                 var stateData = JsonConvert.DeserializeObject<MainWindowStateData>(json, _jsonSettings);
+
+                // 读取筛选条件集合
+                _lastGridFilterConditions = stateData?.PackageGridFilterConditions ?? new List<FilterCondition>();
                 return stateData;
             }
             catch (Exception ex)
@@ -363,6 +405,7 @@ namespace PackageManager.Services
                 {
                     File.Delete(_mainWindowStateFilePath);
                 }
+
                 return true;
             }
             catch (Exception ex)
@@ -384,6 +427,7 @@ namespace PackageManager.Services
                 {
                     File.Delete(_dataFilePath);
                 }
+
                 return true;
             }
             catch (Exception ex)
@@ -494,7 +538,5 @@ namespace PackageManager.Services
 
         // 外部工具路径缓存
         public string VsCodePath { get; set; } = null;
-
-        public string LogViewProPath { get; set; } = null;
     }
 }

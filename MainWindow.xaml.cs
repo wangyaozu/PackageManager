@@ -16,6 +16,10 @@ using PackageManager.Function.Log;
 using PackageManager.Function.Path;
 using PackageManager.Function.Setting;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Collections.Specialized;
+using System.Globalization;
+using CustomControlLibrary.CustomControl.Controls.DataGrid.Filter;
 
 namespace PackageManager
 {
@@ -29,52 +33,63 @@ namespace PackageManager
             Url = url;
         }
     }
-    
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
         private readonly PackageUpdateService _updateService;
+
         private readonly FtpService _ftpService;
+
         private readonly ApplicationFinderService _applicationFinderService;
+
         private readonly DataPersistenceService _dataPersistenceService;
+
         private ObservableCollection<PackageInfo> _packages;
+
         private PackageInfo _latestActivePackage;
+
         private CommonLinkItem _selectedCommonLink;
+
         public ObservableCollection<CommonLinkItem> CommonLinks { get; } = new ObservableCollection<CommonLinkItem>();
+
         public CommonLinkItem SelectedCommonLink
         {
             get => _selectedCommonLink;
+
             set => SetProperty(ref _selectedCommonLink, value);
         }
-        
+
 
         public ObservableCollection<PackageInfo> Packages
         {
             get => _packages;
+
             set => SetProperty(ref _packages, value);
         }
 
         public PackageInfo LatestActivePackage
         {
             get => _latestActivePackage;
+
             set => SetProperty(ref _latestActivePackage, value);
         }
 
         public MainWindow()
         {
             InitializeComponent();
-            
+
             _updateService = new PackageUpdateService();
             _ftpService = new FtpService();
             _applicationFinderService = new ApplicationFinderService();
             _dataPersistenceService = new DataPersistenceService();
-            
+
             // 设置PackageInfo的静态DataPersistenceService引用
             PackageInfo.DataPersistenceService = _dataPersistenceService;
             FtpService.DataService = _dataPersistenceService;
-            
+
             DataContext = this;
             InitializePackages();
             InitializeCommonLinks();
@@ -93,6 +108,8 @@ namespace PackageManager
             {
                 Services.LoggingService.LogError(ex, "启动更新检查失败");
             }
+            
+            PackageDataGrid.ApplyFiltersAndSorts();
 
             await LoadVersionsFromFtpAsync();
             
@@ -106,6 +123,8 @@ namespace PackageManager
             {
                 CommonLinks.Clear();
                 CommonLinks.Add(new CommonLinkItem("JenKins", "http://192.168.0.245:8080/view/%E6%9C%BA%E7%94%B5%E9%A1%B9%E7%9B%AE%E7%BB%84/"));
+                CommonLinks.Add(new CommonLinkItem("210", "http://192.168.0.210:8001/"));
+                CommonLinks.Add(new CommonLinkItem("215", "http://192.168.0.215:8001/"));
                 CommonLinks.Add(new CommonLinkItem("导航", "http://192.168.0.11:9999/"));
                 CommonLinks.Add(new CommonLinkItem("传360", "https://i.360.cn/login/?src=pcw_renzheng&tpl=client&destUrl=https%3A%2F%2Fopen.soft.360.cn%2Fsoftsubmit.php"));
                 SelectedCommonLink = CommonLinks.FirstOrDefault();
@@ -124,11 +143,13 @@ namespace PackageManager
                 MessageBox.Show("请先选择一个常用网址", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+
             if (string.IsNullOrWhiteSpace(item.Url))
             {
                 MessageBox.Show("该常用网址尚未配置具体地址，请在设置中填写公司官网URL。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+
             OpenUrl(item.Url);
         }
 
@@ -141,6 +162,7 @@ namespace PackageManager
                     MessageBox.Show("目标链接为空", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
+
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = url,
@@ -194,7 +216,7 @@ namespace PackageManager
                         {
                             // 保存到缓存
                             _dataPersistenceService.UpdateCachedData(programName, versions);
-                                
+
                             Application.Current.Dispatcher.Invoke(() =>
                             {
                                 foreach (PackageInfo packageInfo in Packages)
@@ -233,7 +255,7 @@ namespace PackageManager
         private void UpdatePackageExecutableVersions(PackageInfo package, System.Collections.Generic.List<ApplicationVersion> versions)
         {
             package.AvailableExecutableVersions.Clear();
-            
+
             foreach (var version in versions)
             {
                 package.AvailableExecutableVersions.Add(version);
@@ -343,10 +365,10 @@ namespace PackageManager
 
                 // 构建版本路径
                 var versionPath = package.FtpServerPath.TrimEnd('/') + "/" + version + "/";
-                
+
                 // 从版本路径读取所有文件
                 var files = await _ftpService.GetFilesAsync(versionPath);
-                
+
                 // 更新可用包列表（上传时间）
                 package.UpdateAvailablePackages(files);
             }
@@ -385,7 +407,7 @@ namespace PackageManager
                 package.DebugModeChanged += OnPackageDebugModeChanged;
                 package.PropertyChanged += OnPackagePropertyChanged;
             }
-            
+
             if (_dataPersistenceService.HasMainWindowState())
             {
                 var stateData = _dataPersistenceService.LoadMainWindowState();
@@ -404,21 +426,26 @@ namespace PackageManager
                             _dataPersistenceService.ApplyStateToPackage(package, savedState);
                         }
                     }
+                    PackageDataGrid.FilterManager.FilterConditions.Clear();
+                    foreach (FilterCondition condition in stateData.PackageGridFilterConditions)
+                    {
+                        PackageDataGrid.FilterManager.FilterConditions.Add(condition);
+                    }
                 }
             }
         }
-        
+
         private async void OnPackageDownloadRequested(PackageInfo packageInfo)
         {
             packageInfo.StatusText = $"正在更新 {packageInfo.ProductName}...";
-            
+
             // 设置为只读状态，防止更新时编辑
             packageInfo.IsReadOnly = true;
             packageInfo.IsUpdatingRunning = true;
             packageInfo.UpdateCancellationSource = new System.Threading.CancellationTokenSource();
-                
+
             // 开始更新
-            var success = await _updateService.UpdatePackageAsync(packageInfo, 
+            var success = await _updateService.UpdatePackageAsync(packageInfo,
                                                                   (progress, message) =>
                                                                   {
                                                                       // 在UI线程更新状态
@@ -493,7 +520,7 @@ namespace PackageManager
                 }
             });
         }
-        
+
         /// <summary>
         /// 处理调试模式切换事件，左下角状态栏写入当前模式
         /// </summary>
@@ -502,7 +529,7 @@ namespace PackageManager
             try
             {
                 package.StatusText = $"{package.ProductName} 当前模式：{(isDebug ? "调试模式" : "正常模式")}";
-                
+
                 // 持久化到主界面状态（包含IsDebugMode）
                 SaveCurrentState();
             }
@@ -511,7 +538,7 @@ namespace PackageManager
                 System.Diagnostics.Debug.WriteLine($"更新状态栏失败: {ex.Message}");
             }
         }
-        
+
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -546,7 +573,7 @@ namespace PackageManager
             {
                 // 重新加载该包的版本和文件信息
                 await LoadPackageDataAsync(package);
-                
+
                 // 如果选择了版本，重新加载该版本的文件列表
                 if (!string.IsNullOrEmpty(package.Version))
                 {
@@ -569,11 +596,11 @@ namespace PackageManager
                 if (!string.IsNullOrEmpty(newVersion))
                 {
                     package.StatusText = $"正在加载版本 {newVersion} 的包列表...";
-                    
+
                     // 加载新版本的文件列表
                     package.UploadPackageName = string.Empty;
                     await LoadPackageFilesAsync(package, newVersion);
-                    
+
                     package.StatusText = $"版本 {newVersion} 包列表加载完成";
                 }
             }
@@ -636,28 +663,27 @@ namespace PackageManager
         {
             try
             {
-                var result = MessageBox.Show(
-                    "确定要清除所有保存的数据吗？\n这将删除：\n- 主界面状态数据\n- 应用程序缓存数据\n- 用户设置数据\n\n此操作不可撤销！", 
-                    "确认清除数据", 
-                    MessageBoxButton.YesNo, 
-                    MessageBoxImage.Warning);
+                var result = MessageBox.Show("确定要清除所有保存的数据吗？\n这将删除：\n- 主界面状态数据\n- 应用程序缓存数据\n- 用户设置数据\n\n此操作不可撤销！",
+                                             "确认清除数据",
+                                             MessageBoxButton.YesNo,
+                                             MessageBoxImage.Warning);
 
                 if (result == MessageBoxResult.Yes)
                 {
                     _dataPersistenceService.ClearMainWindowState();
                     _dataPersistenceService.ClearAllCachedData();
                     _dataPersistenceService.ClearSettings();
-                    
+
                     var pkg = LatestActivePackage ?? Packages?.FirstOrDefault();
                     if (pkg != null)
                     {
                         pkg.StatusText = "所有数据已清除";
                     }
-                    
-                    MessageBox.Show("数据清除完成！\n建议重启应用程序以确保所有更改生效。", 
-                                  "清除完成", 
-                                  MessageBoxButton.OK, 
-                                  MessageBoxImage.Information);
+
+                    MessageBox.Show("数据清除完成！\n建议重启应用程序以确保所有更改生效。",
+                                    "清除完成",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
@@ -670,10 +696,7 @@ namespace PackageManager
         {
             if (e.PropertyName == nameof(PackageInfo.StatusText) && sender is PackageInfo pkg)
             {
-                Dispatcher.Invoke(() =>
-                {
-                    LatestActivePackage = pkg;
-                });
+                Dispatcher.Invoke(() => { LatestActivePackage = pkg; });
             }
         }
 
@@ -731,6 +754,7 @@ namespace PackageManager
                 {
                     File.WriteAllText(path, "[]");
                 }
+
                 Process.Start(path);
             }
             catch (Exception ex)
@@ -750,14 +774,14 @@ namespace PackageManager
                     MessageBox.Show("请先选择一个产品包", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
-                
-                var baseDir = Path.Combine(Path.GetTempPath(),"HongWaSoftLog");
+
+                var baseDir = Path.Combine(Path.GetTempPath(), "HongWaSoftLog");
                 if (string.IsNullOrWhiteSpace(baseDir) || !Directory.Exists(baseDir))
                 {
                     MessageBox.Show("本地路径不存在，无法打开日志", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-                
+
                 var win = new PackageManager.Function.Log.ProductLogsWindow(baseDir)
                 {
                     Owner = this
@@ -770,6 +794,7 @@ namespace PackageManager
                 MessageBox.Show($"打开产品日志目录失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private void OpenCsvCryptoWindowButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -782,6 +807,17 @@ namespace PackageManager
             {
                 LoggingService.LogError(ex, "打开CSV加解密窗口失败");
                 MessageBox.Show($"打开CSV加解密窗口失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FilterButton_Click(object sender, RoutedEventArgs e)
+        {
+            PackageDataGrid.ShowFilterEditor();
+            ObservableCollection<FilterCondition> filterManagerFilterConditions = PackageDataGrid.FilterManager.FilterConditions;
+            // 保存筛选条件集合到持久化服务的缓存，并写入主界面状态文件
+            if (_dataPersistenceService.SaveMainWindowFilterCondition(filterManagerFilterConditions))
+            {
+                SaveCurrentState();
             }
         }
     }
