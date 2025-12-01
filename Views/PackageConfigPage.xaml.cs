@@ -4,24 +4,31 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
+using PackageManager.Function.PackageManage;
 using PackageManager.Models;
 using PackageManager.Services;
 
-namespace PackageManager.Function.PackageManage
+namespace PackageManager.Views
 {
-    public partial class PackageConfigWindow : Window, INotifyPropertyChanged, IPackageEditorHost
+    /// <summary>
+    /// 包管理配置页面（支持导航），复用窗口逻辑。
+    /// </summary>
+    public partial class PackageConfigPage : Page, INotifyPropertyChanged, ICentralPage, IPackageEditorHost
     {
         private readonly DataPersistenceService _dataService;
 
         private PackageItem _selectedItem;
 
-        public PackageConfigWindow()
+        public PackageConfigPage()
         {
             InitializeComponent();
             _dataService = new DataPersistenceService();
             DataContext = this;
             LoadData();
         }
+
+        public event Action RequestExit;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -33,6 +40,19 @@ namespace PackageManager.Function.PackageManage
             set => SetProperty(ref _selectedItem, value);
         }
 
+        private void LoadData()
+        {
+            AllItems.Clear();
+            foreach (var bi in _dataService.GetBuiltInPackageConfigs())
+            {
+                AllItems.Add(PackageItem.From(bi, true, this));
+            }
+            foreach (var ci in _dataService.LoadPackageConfigs())
+            {
+                AllItems.Add(PackageItem.From(ci, false, this));
+            }
+        }
+
         public void EditItem(PackageItem item, bool isNew)
         {
             if (item.IsBuiltIn)
@@ -40,7 +60,11 @@ namespace PackageManager.Function.PackageManage
                 MessageBox.Show("内置项不可编辑", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            var win = new PackageEditWindow(item) { Owner = this };
+            var ownerWindow = Window.GetWindow(this);
+            var win = new PackageManager.Function.PackageManage.PackageEditWindow(item)
+            {
+                Owner = ownerWindow
+            };
             var result = win.ShowDialog();
             if (result != true && isNew)
             {
@@ -60,32 +84,6 @@ namespace PackageManager.Function.PackageManage
             if (ReferenceEquals(SelectedItem, item)) SelectedItem = null;
         }
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
-        {
-            if (Equals(field, value)) return false;
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
-
-        private void LoadData()
-        {
-            AllItems.Clear();
-            foreach (var bi in _dataService.GetBuiltInPackageConfigs())
-            {
-                AllItems.Add(PackageItem.From(bi, true, this));
-            }
-            foreach (var ci in _dataService.LoadPackageConfigs())
-            {
-                AllItems.Add(PackageItem.From(ci, false, this));
-            }
-        }
-
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
             var item = new PackageItem(this)
@@ -101,22 +99,6 @@ namespace PackageManager.Function.PackageManage
             EditItem(item, true);
         }
 
-        private void DeleteButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (SelectedItem == null)
-            {
-                MessageBox.Show("请先选择一个项", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            if (SelectedItem.IsBuiltIn)
-            {
-                MessageBox.Show("内置项不可删除", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            AllItems.Remove(SelectedItem);
-            SelectedItem = null;
-        }
-
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -126,7 +108,7 @@ namespace PackageManager.Function.PackageManage
                 if (ok)
                 {
                     MessageBox.Show("保存成功，重启应用后生效", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                    Close();
+                    RequestExit?.Invoke();
                 }
                 else
                 {
@@ -139,19 +121,23 @@ namespace PackageManager.Function.PackageManage
             }
         }
 
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            Close();
+            RequestExit?.Invoke();
         }
 
-        private void EditButton_Click(object sender, RoutedEventArgs e)
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            if (SelectedItem == null)
-            {
-                MessageBox.Show("请先选择一个项", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            EditItem(SelectedItem, false);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        {
+            if (Equals(field, value)) return false;
+            field = value;
+            OnPropertyChanged(propertyName);
+            return true;
         }
     }
 }
+

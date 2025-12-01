@@ -21,10 +21,10 @@ namespace PackageManager.Models
             set => SetProperty(ref productName, value);
         }
 
-        [DataGridColumn(2, DisplayName = "版本", Width = "80", IsReadOnly = true)]
+        [DataGridColumn(2, DisplayName = "版本", Width = "150", IsReadOnly = true)]
         public string Version { get; set; }
 
-        [DataGridColumn(3, DisplayName = "本地包路径", Width = "420")]
+        [DataGridColumn(3, DisplayName = "本地包路径", Width = "450")]
         public string LocalPath
         {
             get => localPath;

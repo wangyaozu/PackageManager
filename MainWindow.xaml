@@ -7,8 +7,9 @@
         xmlns:C="clr-namespace:CustomControlLibrary.CustomControl.Controls.DataGrid;assembly=CustomControlLibrary"
         xmlns:controls="clr-namespace:CustomControlLibrary.CustomControl.Controls;assembly=CustomControlLibrary"
         xmlns:button="clr-namespace:CustomControlLibrary.CustomControl.Controls.Button;assembly=CustomControlLibrary"
+        xmlns:views="clr-namespace:PackageManager.Views"
         mc:Ignorable="d"
-        Title="包管理器" Height="700" Width="1350" MinWidth="960"
+        Title="包管理器" Height="700" Width="1400" MinWidth="960"
         Icon="/Assets/Icons/App.ico"
         ResizeMode="CanResize" WindowStartupLocation="CenterScreen" AllowDrop="True">
     <Window.Resources>
@@ -49,63 +50,28 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
+    <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="240" />
                 <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="500" />
-            </Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-            <C:CDataGrid x:Name="PackageDataGrid"
-                         Grid.Column="0"
-                         EnableFilter="True"
-                         EnableAutoTemplateSelection="True"
-                         ItemsSource="{Binding Packages}"
-                         SelectedItem="{Binding LatestActivePackage, Mode=TwoWay}" />
+            <!-- 左侧导航面板 -->
+            <views:NavigationPanel Grid.Column="0" />
 
+            <!-- 左侧与中间的分隔条 -->
             <GridSplitter Grid.Column="1"
                           Width="6"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
                           Background="#22000000" />
 
-            <Border Grid.Column="2" BorderBrush="#1F000000" BorderThickness="1" Padding="12">
-                <StackPanel>
-                    <controls:CTextBlock Text="{Binding LatestActivePackage.ProductName}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <controls:CTextBlock Text="版本" Width="80" VerticalAlignment="Center" />
-                        <controls:CComboBox ItemsSource="{Binding LatestActivePackage.AvailableVersions}"
-                                            SelectedItem="{Binding LatestActivePackage.Version, Mode=TwoWay}" Width="320" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <controls:CTextBlock Text="包名" Width="80" VerticalAlignment="Center" />
-                        <controls:CComboBox ItemsSource="{Binding LatestActivePackage.AvailablePackages}"
-                                            SelectedItem="{Binding LatestActivePackage.UploadPackageName, Mode=TwoWay}" Width="320" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <controls:CTextBlock Text="可执行版本" Width="80" VerticalAlignment="Center" />
-                        <controls:CComboBox ItemsSource="{Binding LatestActivePackage.AvailableExecutableVersions}"
-                                            DisplayMemberPath="DisPlayName"
-                                            SelectedValuePath="DisPlayName"
-                                            SelectedValue="{Binding LatestActivePackage.SelectedExecutableVersion, Mode=TwoWay}" Width="320" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                        <button:CButton Content="{Binding LatestActivePackage.UnlockUpdateButtonText}" Command="{Binding LatestActivePackage.UnlockUpdateToggleCommand}" Width="80" Margin="0,0,8,0" />
-                        <button:CButton Content="{Binding LatestActivePackage.UpdateButtonText}" Command="{Binding LatestActivePackage.UpdateToggleCommand}" Width="80" Margin="0,0,8,0" />
-                        <button:CButton Content="打开Revit" Command="{Binding LatestActivePackage.OpenPathCommand}" Width="100" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.IsEnabled}" />
-                        <button:CButton Content="切换配置" Command="{Binding LatestActivePackage.ChangeConfigPresetCommand}" Width="80" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                        <button:CButton Content="参数目录" Command="{Binding LatestActivePackage.OpenParameterConfigCommand}" Width="80" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
-                        <button:CButton Content="模式切换" Command="{Binding LatestActivePackage.ChangeModeToDebugCommand}" Width="80" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
-                        <button:CButton Content="{Binding LatestActivePackage.SignatureToggleText}" Command="{Binding LatestActivePackage.SignatureToggleCommand}" Width="100" />
-                        <button:CButton Content="CSV加解密" Width="100" Margin="0,0,8,0" Click="OpenCsvCryptoWindowButton_Click"/>
-                        <button:CButton Content="DNS" Width="80" Margin="0,0,8,0" Click="OpenDnsSettingsWindowButton_Click" IsEnabled="{Binding LatestActivePackage.IsTeamworkMasterDevelop}"/>
-                    </StackPanel>
-                    <controls:CProgressBar Minimum="0" Maximum="100" Value="{Binding LatestActivePackage.Progress}" Height="16" Margin="0,16,0,0" />
-                    <controls:CTextBlock Text="{Binding LatestActivePackage.StatusText}" Foreground="#6B6B6B" Margin="0,8,0,0" />
-                </StackPanel>
-            </Border>
+            <!-- 中央内容区：统一使用 Page，通过 Frame 载入 -->
+            <Frame x:Name="CentralFrame"
+                   Grid.Column="2"
+                   NavigationUIVisibility="Hidden"
+                   Background="Transparent" />
         </Grid>
 
         <StatusBar Grid.Row="2" Margin="0,12,0,0">

@@ -32,7 +32,7 @@
 ## 1.0.11.0 — 2025-11-28
 
 - 主界面新增常用网址导航与“产品日志”查看功能。
-- 集成 LogViewPro、VSCode、记事本多种日志打开方式；内置 LogViewPro 并支持自动提取。
+- 集成 LogViewPro、VSCode、记事本多种日志打开方式；内置 LogViewPro。
 
 提交参考：
 - 74be57d2 — feat(ui): 常用网址导航与产品日志
@@ -88,7 +88,7 @@
 
 - 配置预设管理：新增 `ConfigPreset` 与 `ConfigPresetStore`，支持内置与自定义预设。
 - 新增 `ConfigPresetWindow` 与 `AddPresetWindow`；主窗口增加“切换配置”与相关命令。
-- 应用自动更新：新增 `AppUpdateService`，支持 FTP 检查与下载，版本比对与后台替换。
+- 应用自动更新：新增 `AppUpdateService`，支持检查与下载，版本比对与后台替换。
 - 进度与状态修复：嵌入工具状态信息失效问题修复；新增 `DebugSettingsService` 与 `EmbeddedToolRunnerService`。
 
 提交参考：
@@ -100,7 +100,7 @@
 
 - 日志查看器：支持按类型/日期/级别筛选、搜索与自动滚动；添加打开日志按钮。
 - 日志服务与管理员权限：统一日志记录，应用启动时检测并请求管理员权限。
-- 自动更新功能首次引入：FTP 检查下载与版本比对、替换脚本、错误处理与提示。
+- 自动更新功能首次引入：检查下载与版本比对、替换脚本、错误处理与提示。
 
 提交参考：
 - e626464b — feat(log): 日志查看器与解压逻辑优化，版本至 1.0.3

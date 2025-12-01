@@ -1,0 +1,34 @@
+<Page x:Class="PackageManager.Views.ProductLogsPage"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:C="clr-namespace:CustomControlLibrary.CustomControl.Controls.DataGrid;assembly=CustomControlLibrary"
+        xmlns:button="clr-namespace:CustomControlLibrary.CustomControl.Controls.Button;assembly=CustomControlLibrary"
+        xmlns:controls="clr-namespace:CustomControlLibrary.CustomControl.Controls;assembly=CustomControlLibrary"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 统一面包屑 + 页标题 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock x:Name="BaseDirText" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <button:CButton Content="刷新" Width="100" Click="RefreshButton_Click"/>
+            </StackPanel>
+        </StackPanel>
+
+        <C:CDataGrid x:Name="ProductLogGrid" Grid.Row="1"
+                     TextAlignment="Left"
+                     EnableAutoTemplateSelection="True"
+                     Margin="0,0,0,0"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <button:CButton Content="返回" Width="100" Click="CloseButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Page>

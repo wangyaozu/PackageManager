@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
@@ -20,6 +21,8 @@ using System.Reflection;
 using System.Collections.Specialized;
 using System.Globalization;
 using CustomControlLibrary.CustomControl.Controls.DataGrid.Filter;
+using System.Windows.Input;
+using PackageManager.Views;
 
 namespace PackageManager
 {
@@ -62,6 +65,33 @@ namespace PackageManager
             set => SetProperty(ref _selectedCommonLink, value);
         }
 
+        // 左侧导航分类数据
+        public ObservableCollection<CategoryNode> CategoryTree { get; } = new ObservableCollection<CategoryNode>();
+
+        // 当前选中的分类名称（供左侧导航使用）
+        private string _selectedCategory;
+        public string SelectedCategory
+        {
+            get => _selectedCategory;
+            set
+            {
+                if (SetProperty(ref _selectedCategory, value))
+                {
+                    ApplyCategorySelection();
+                }
+            }
+        }
+
+        // 左侧导航命令（与 NavigationPanel.xaml 绑定）
+        public ICommand NavigateHomeCommand { get; set; }
+        public ICommand RefreshCommand { get; }
+        public ICommand SettingsCommand { get; }
+        public ICommand LocalPathSettingsCommand { get; }
+        public ICommand OpenLogViewerCommand { get; }
+        public ICommand OpenProductLogsCommand { get; }
+        public ICommand OpenPackageConfigCommand { get; }
+        public ICommand OpenCommonLinksPageCommand { get; }
+
 
         public ObservableCollection<PackageInfo> Packages
         {
@@ -75,6 +105,36 @@ namespace PackageManager
             get => _latestActivePackage;
 
             set => SetProperty(ref _latestActivePackage, value);
+        }
+
+        // 中央区域页面承载：主页与导航方法
+        private PackageManager.Views.PackagesHomePage _homePage;
+
+        private void NavigateHome()
+        {
+            if (_homePage == null)
+            {
+                _homePage = new PackageManager.Views.PackagesHomePage();
+                // 使用主窗口的 DataContext 进行数据绑定
+                _homePage.DataContext = this;
+            }
+            CentralFrame.Navigate(_homePage);
+        }
+
+        private void NavigateTo(Page page)
+        {
+            if (page == null) return;
+            // 不强制覆盖页面自己的DataContext；仅当未设置时才继承主窗口上下文
+            if (page.DataContext == null)
+            {
+                page.DataContext = this;
+            }
+            CentralFrame.Navigate(page);
+        }
+
+        private CustomControlLibrary.CustomControl.Controls.DataGrid.CDataGrid GetPackageDataGrid()
+        {
+            return _homePage?.PackageGrid;
         }
 
         public MainWindow()
@@ -91,10 +151,23 @@ namespace PackageManager
             FtpService.DataService = _dataPersistenceService;
 
             DataContext = this;
+            // 首次进入主界面，加载包列表主页到中央区域
+            NavigateHome();
             InitializePackages();
+            BuildCategoryTree();
             InitializeCommonLinks();
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
+
+            // 初始化命令，将现有点击处理函数以命令方式暴露给 NavigationPanel
+            RefreshCommand = new RelayCommand(() => { _ = LoadVersionsFromFtpAsync(); });
+            NavigateHomeCommand = new RelayCommand(() => { NavigateHome(); });
+            SettingsCommand = new RelayCommand(() => { SettingsButton_Click(this, new RoutedEventArgs()); });
+            LocalPathSettingsCommand = new RelayCommand(() => { LocalPathSettingsButton_Click(this, new RoutedEventArgs()); });
+            OpenLogViewerCommand = new RelayCommand(() => { OpenLogViewerButton_Click(this, new RoutedEventArgs()); });
+            OpenProductLogsCommand = new RelayCommand(() => { OpenProductLogButton_Click(this, new RoutedEventArgs()); });
+            OpenPackageConfigCommand = new RelayCommand(() => { OpenPackageConfigButton_Click(this, new RoutedEventArgs()); });
+            OpenCommonLinksPageCommand = new RelayCommand(OpenCommonLinksPage);
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -109,7 +182,8 @@ namespace PackageManager
                 Services.LoggingService.LogError(ex, "启动更新检查失败");
             }
             
-            PackageDataGrid.ApplyFiltersAndSorts();
+            // 应用筛选与排序到主页网格（如果已创建）
+            GetPackageDataGrid()?.ApplyFiltersAndSorts();
 
             await LoadVersionsFromFtpAsync();
             
@@ -132,6 +206,33 @@ namespace PackageManager
             catch (Exception ex)
             {
                 Services.LoggingService.LogError(ex, "初始化常用链接失败");
+            }
+        }
+
+        /// <summary>
+        /// 根据当前包列表构建左侧分类树（单层：全部 + 各产品名）
+        /// </summary>
+        private void BuildCategoryTree()
+        {
+            try
+            {
+                CategoryTree.Clear();
+                var names = new List<string> { "全部" };
+                if (Packages != null)
+                {
+                    names.AddRange(Packages.Select(p => p.ProductName).Distinct());
+                }
+
+                foreach (var name in names)
+                {
+                    CategoryTree.Add(new CategoryNode { Name = name });
+                }
+
+                SelectedCategory = names.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                Services.LoggingService.LogError(ex, "构建分类导航失败");
             }
         }
 
@@ -317,6 +418,9 @@ namespace PackageManager
             {
                 await LoadPackageDataAsync(package);
             }
+
+            // 重新构建分类导航，确保新增包或产品名变更反映到左侧
+            BuildCategoryTree();
         }
 
         /// <summary>
@@ -426,10 +530,14 @@ namespace PackageManager
                             _dataPersistenceService.ApplyStateToPackage(package, savedState);
                         }
                     }
-                    PackageDataGrid.FilterManager.FilterConditions.Clear();
-                    foreach (FilterCondition condition in stateData.PackageGridFilterConditions)
+                    var grid = GetPackageDataGrid();
+                    if (grid != null)
                     {
-                        PackageDataGrid.FilterManager.FilterConditions.Add(condition);
+                        grid.FilterManager.FilterConditions.Clear();
+                        foreach (FilterCondition condition in stateData.PackageGridFilterConditions)
+                        {
+                            grid.FilterManager.FilterConditions.Add(condition);
+                        }
                     }
                 }
             }
@@ -555,6 +663,37 @@ namespace PackageManager
             return true;
         }
 
+        private void ApplyCategorySelection()
+        {
+            try
+            {
+                // 无论当前是否在其它页面，切换分类后回到包列表主页
+                NavigateHome();
+
+                var view = CollectionViewSource.GetDefaultView(Packages);
+                if (view == null) return;
+
+                if (string.IsNullOrWhiteSpace(SelectedCategory) || string.Equals(SelectedCategory, "全部", StringComparison.Ordinal))
+                {
+                    view.Filter = null;
+                }
+                else
+                {
+                    view.Filter = obj =>
+                    {
+                        var p = obj as PackageInfo;
+                        return p != null && string.Equals(p.ProductName, SelectedCategory, StringComparison.OrdinalIgnoreCase);
+                    };
+                }
+
+                GetPackageDataGrid()?.ApplyFiltersAndSorts();
+            }
+            catch (Exception ex)
+            {
+                Services.LoggingService.LogError(ex, "应用分类筛选失败");
+            }
+        }
+
         /// <summary>
         /// 刷新按钮点击事件
         /// </summary>
@@ -617,9 +756,12 @@ namespace PackageManager
         {
             try
             {
-                var settingsWindow = new SettingsWindow(_dataPersistenceService);
-                settingsWindow.Owner = this;
-                settingsWindow.ShowDialog();
+                var page = new SettingsPage(_dataPersistenceService);
+                if (page is PackageManager.Views.ICentralPage icp)
+                {
+                    icp.RequestExit += () => NavigateHome();
+                }
+                NavigateTo(page);
             }
             catch (Exception ex)
             {
@@ -634,21 +776,22 @@ namespace PackageManager
         {
             try
             {
-                var win = new LocalPathSettingsWindow(_dataPersistenceService, Packages)
+                var page = new PackageManager.Views.LocalPathSettingsPage(_dataPersistenceService, Packages);
+                if (page is PackageManager.Views.ICentralPage icp)
                 {
-                    Owner = this
-                };
-                var result = win.ShowDialog();
-                if (result == true)
+                    icp.RequestExit += () => NavigateHome();
+                }
+                // 保存后更新状态提示
+                page.Saved += () =>
                 {
-                    // 保存主界面状态（包含LocalPath）
                     _dataPersistenceService.SaveMainWindowState(Packages);
                     var pkg = LatestActivePackage ?? Packages?.FirstOrDefault();
                     if (pkg != null)
                     {
                         pkg.StatusText = "本地路径设置已保存";
                     }
-                }
+                };
+                NavigateTo(page);
             }
             catch (Exception ex)
             {
@@ -734,9 +877,12 @@ namespace PackageManager
         {
             try
             {
-                var win = new LogViewerWindow();
-                win.Owner = this;
-                win.ShowDialog();
+                var page = new PackageManager.Views.LogViewerPage();
+                if (page is PackageManager.Views.ICentralPage icp)
+                {
+                    icp.RequestExit += () => NavigateHome();
+                }
+                NavigateTo(page);
             }
             catch (Exception ex)
             {
@@ -749,18 +895,38 @@ namespace PackageManager
         {
             try
             {
-                var path = _dataPersistenceService.GetPackagesConfigPath();
-                if (!File.Exists(path))
+                var page = new PackageManager.Views.PackageConfigPage();
+                if (page is PackageManager.Views.ICentralPage icp)
                 {
-                    File.WriteAllText(path, "[]");
+                    icp.RequestExit += () => NavigateHome();
                 }
-
-                Process.Start(path);
+                NavigateTo(page);
             }
             catch (Exception ex)
             {
-                LoggingService.LogError(ex, "打开包配置文件失败");
-                MessageBox.Show($"打开包配置文件失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                LoggingService.LogError(ex, "打开包管理配置页面失败");
+                MessageBox.Show($"打开包管理配置页面失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 打开常用网址导航页面（窗口承载）
+        /// </summary>
+        private void OpenCommonLinksPage()
+        {
+            try
+            {
+                var page = new PackageManager.Views.CommonLinksPage(CommonLinks);
+                if (page is PackageManager.Views.ICentralPage icp)
+                {
+                    icp.RequestExit += () => NavigateHome();
+                }
+                NavigateTo(page);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "打开常用网址导航页失败");
+                MessageBox.Show($"打开常用网址导航页失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -782,11 +948,12 @@ namespace PackageManager
                     return;
                 }
 
-                var win = new PackageManager.Function.Log.ProductLogsWindow(baseDir)
+                var page = new PackageManager.Views.ProductLogsPage(baseDir);
+                if (page is PackageManager.Views.ICentralPage icp)
                 {
-                    Owner = this
-                };
-                win.ShowDialog();
+                    icp.RequestExit += () => NavigateHome();
+                }
+                NavigateTo(page);
             }
             catch (Exception ex)
             {
@@ -812,8 +979,10 @@ namespace PackageManager
 
         private void FilterButton_Click(object sender, RoutedEventArgs e)
         {
-            PackageDataGrid.ShowFilterEditor();
-            ObservableCollection<FilterCondition> filterManagerFilterConditions = PackageDataGrid.FilterManager.FilterConditions;
+            var grid = GetPackageDataGrid();
+            if (grid == null) return;
+            grid.ShowFilterEditor();
+            ObservableCollection<FilterCondition> filterManagerFilterConditions = grid.FilterManager.FilterConditions;
             // 保存筛选条件集合到持久化服务的缓存，并写入主界面状态文件
             if (_dataPersistenceService.SaveMainWindowFilterCondition(filterManagerFilterConditions))
             {

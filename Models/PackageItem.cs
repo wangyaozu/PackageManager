@@ -10,7 +10,7 @@ namespace PackageManager.Models
 {
     public class PackageItem: INotifyPropertyChanged
     {
-        private readonly PackageConfigWindow owner;
+        private readonly IPackageEditorHost owner;
 
         private string productName;
 
@@ -22,7 +22,7 @@ namespace PackageManager.Models
 
         private bool isBuiltIn;
 
-        public PackageItem(PackageConfigWindow owner)
+        public PackageItem(IPackageEditorHost owner)
         {
             this.owner = owner;
             EditCommand = new RelayCommand(() => owner.EditItem(this, false), () => CanEditDelete);
@@ -129,7 +129,7 @@ namespace PackageManager.Models
             new ButtonConfig { Text = "删除", Width = 70, Height = 26, CommandProperty = nameof(DeleteCommand), IsEnabledProperty = nameof(CanEditDelete) },
         };
 
-        public static PackageItem From(DataPersistenceService.PackageConfigItem c, bool builtIn, PackageConfigWindow owner) => new PackageItem(owner)
+        public static PackageItem From(DataPersistenceService.PackageConfigItem c, bool builtIn, IPackageEditorHost owner) => new PackageItem(owner)
         {
             ProductName = c.ProductName,
             FtpServerPath = c.FtpServerPath,
