@@ -248,7 +248,7 @@
       <Content Include="scripts\sign.config.json" />
       <Content Include="scripts\SignExe.ps1" />
       <Content Include="scripts\SignPackageManager.ps1" />
-      <EmbeddedResource Include="UpdateSummary.md" />
+      <Content Include="UpdateSummary.txt" />
       <EmbeddedResource Include="Assets\Tools\LogViewPro.exe" />
       <Content Include="Assets\Icons\README.txt" />
       <Content Include="Assets\Icons\source.png" />

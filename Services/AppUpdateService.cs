@@ -54,7 +54,7 @@ namespace PackageManager.Services
                 return;
             }
 
-            var message = BuildUpdatePromptContent(current, latest);
+            var message = await BuildUpdatePromptContentAsync(current, latest);
             var result = MessageBox.Show(owner ?? Application.Current.MainWindow,
                                          message,
                                          "发现新版本",
@@ -223,14 +223,15 @@ namespace PackageManager.Services
         }
 
         private const string FallbackUpdateServerUrl = "http://192.168.0.215:8001/PackageManager/";
+        private const string UpdateSummaryBaseUrl = "http://192.168.0.215:8001/UpdateSummary/";
         
-        private string BuildUpdatePromptContent(Version current, Version latest)
+        private async Task<string> BuildUpdatePromptContentAsync(Version current, Version latest)
         {
             var header = $"检测到新版本：{latest}，当前版本：{current}\n\n主要更新点：";
 
             try
             {
-                var summaries = LoadVersionSummaries();
+                var summaries = await LoadVersionSummariesAsync();
                 var select = summaries.Keys.Select(k => new { key = k, ver = TryParseVersion(k) });
                 var targets = select
                               .Where(x => x.ver != null && x.ver > current && x.ver <= latest)
@@ -262,13 +263,12 @@ namespace PackageManager.Services
             try { return NormalizeVersion(Version.Parse(text)); } catch { return null; }
         }
 
-        private System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> LoadVersionSummaries()
+        private async Task<System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>> LoadVersionSummariesAsync()
         {
-
             string content = null;
             try
             {
-                content = TryReadEmbeddedSummary();;
+                content = await TryReadRemoteSummaryAsync();
             }
             catch { }
 
@@ -298,18 +298,14 @@ namespace PackageManager.Services
             return map;
         }
 
-        private static string TryReadEmbeddedSummary()
+        private static async Task<string> TryReadRemoteSummaryAsync()
         {
             try
             {
-                var asm = Assembly.GetExecutingAssembly();
-                var names = asm.GetManifestResourceNames();
-                var target = names.FirstOrDefault(n => n.EndsWith("UpdateSummary.md", StringComparison.OrdinalIgnoreCase));
-                if (string.IsNullOrEmpty(target)) return null;
-                using (var stream = asm.GetManifestResourceStream(target))
-                using (var reader = new StreamReader(stream))
+                var url = UpdateSummaryBaseUrl.TrimEnd('/') + "/UpdateSummary.txt";
+                using (var client = new WebClient())
                 {
-                    return reader.ReadToEnd();
+                    return await client.DownloadStringTaskAsync(new Uri(url));
                 }
             }
             catch
