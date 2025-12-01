@@ -6,6 +6,7 @@ using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Text.RegularExpressions;
 
 namespace PackageManager.Services
 {
@@ -27,9 +28,9 @@ namespace PackageManager.Services
             {
                 var dirs = await ftpService.GetDirectoriesAsync(serverUrl);
                 var candidates = dirs
-                                 .Select(d => new { d, ver = TryParseVersionFromDir(d) })
+                                 .Select(d => new { d, ver = TryExtractVersionFromName(d) })
                                  .Where(x => x.ver != null)
-                                 .OrderBy(x => x.ver)
+                                 .OrderBy(x => NormalizeVersion(x.ver))
                                  .ToList();
 
                 if (candidates.Count == 0)
@@ -39,7 +40,7 @@ namespace PackageManager.Services
                 }
 
                 latestDir = candidates.Last().d;
-                latest = candidates.Last().ver;
+                latest = NormalizeVersion(candidates.Last().ver);
             }
             catch (Exception ex)
             {
@@ -53,7 +54,7 @@ namespace PackageManager.Services
                 return;
             }
 
-            var message = $"检测到新版本：{latest}，当前版本：{current}。是否立即更新？";
+            var message = BuildUpdatePromptContent(current, latest);
             var result = MessageBox.Show(owner ?? Application.Current.MainWindow,
                                          message,
                                          "发现新版本",
@@ -100,7 +101,8 @@ namespace PackageManager.Services
         {
             try
             {
-                return Assembly.GetExecutingAssembly().GetName().Version;
+                var v = Assembly.GetExecutingAssembly().GetName().Version;
+                return NormalizeVersion(v);
             }
             catch
             {
@@ -108,29 +110,46 @@ namespace PackageManager.Services
             }
         }
 
-        private static Version TryParseVersionFromDir(string dir)
+        /// <summary>
+        /// 规范化 Version 为四段（缺失的段填充为0），避免 1.0.3 与 1.0.3.0 比较偏差。
+        /// </summary>
+        private static Version NormalizeVersion(Version v)
         {
-            try
+            if (v == null) return null;
+            var build = v.Build < 0 ? 0 : v.Build;
+            var rev = v.Revision < 0 ? 0 : v.Revision;
+            return new Version(v.Major, v.Minor, build, rev);
+        }
+
+        /// <summary>
+        /// 从目录名中提取版本号，兼容日期前缀与后缀（如：2025.09.30_v1.5.2、v1.5.2_log、v1.5.2）。
+        /// </summary>
+        private static Version TryExtractVersionFromName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+
+            var match = Regex.Match(name, @"[vV](\d+(?:\.\d+){0,3})", RegexOptions.IgnoreCase);
+            if (match.Success)
             {
-                if (string.IsNullOrWhiteSpace(dir))
+                var verText = match.Groups[1].Value;
+                try
+                {
+                    return NormalizeVersion(Version.Parse(verText));
+                }
+                catch
                 {
                     return null;
                 }
-
-                var cleaned = dir.Trim('/').Trim();
-                if (cleaned.StartsWith("v", StringComparison.OrdinalIgnoreCase))
-                {
-                    cleaned = cleaned.Substring(1);
-                }
-
-                // 去掉可能的后缀，如 _log
-                var basePart = cleaned.Split('_', '-')[0];
-                return Version.Parse(basePart);
             }
-            catch
+
+            // 尝试整体解析（纯数字点分）
+            var cleaned = name.Trim('/').Trim();
+            var basePart = cleaned.Split('_', '-').FirstOrDefault();
+            if (!string.IsNullOrEmpty(basePart))
             {
-                return null;
+                try { return NormalizeVersion(Version.Parse(basePart.TrimStart('v', 'V'))); } catch { }
             }
+            return null;
         }
 
         private static string CombineUrl(string baseUrl, string path1, string file)
@@ -204,5 +223,99 @@ namespace PackageManager.Services
         }
 
         private const string FallbackUpdateServerUrl = "http://192.168.0.215:8001/PackageManager/";
+        
+        private string BuildUpdatePromptContent(Version current, Version latest)
+        {
+            var header = $"检测到新版本：{latest}，当前版本：{current}\n\n主要更新点：";
+
+            try
+            {
+                var summaries = LoadVersionSummaries();
+                var select = summaries.Keys.Select(k => new { key = k, ver = TryParseVersion(k) });
+                var targets = select
+                              .Where(x => x.ver != null && x.ver > current && x.ver <= latest)
+                              .OrderBy(x => x.ver)
+                              .ToList();
+
+                if (targets.Count > 0)
+                {
+                    var lines = targets.SelectMany(t =>
+                    {
+                        var items = summaries[t.key];
+                        var title = $"\n• v{t.ver}:";
+                        var bullets = items.Select(i => $"  - {i}");
+                        return new[] { title }.Concat(bullets);
+                    });
+                    return header + "\n" + string.Join("\n", lines) + "\n\n是否立即更新？";
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogWarning($"读取更新摘要失败，将使用默认提示。详情：{ex.Message}");
+            }
+            
+            return $"检测到新版本：{latest}，当前版本：{current}。是否立即更新？";
+        }
+
+        private static Version TryParseVersion(string text)
+        {
+            try { return NormalizeVersion(Version.Parse(text)); } catch { return null; }
+        }
+
+        private System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> LoadVersionSummaries()
+        {
+
+            string content = null;
+            try
+            {
+                content = TryReadEmbeddedSummary();;
+            }
+            catch { }
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                throw new InvalidOperationException("未找到更新摘要内容。");
+            }
+
+            var map = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>();
+            using (var reader = new StringReader(content))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    // 支持 "- 1.0.13.0：..." 或 "1.0.13.0: ..." 等格式
+                    var m = Regex.Match(line, @"^\s*(?:[-*•]\s*)?(\d+\.\d+\.\d+(?:\.\d+)?)\s*[：:]\s*(.+)\s*$");
+                    if (!m.Success) continue;
+                    var ver = m.Groups[1].Value.Trim();
+                    var rest = m.Groups[2].Value.Trim();
+                    var items = rest.Split(new[] { '、', ',', ';', '，', '；' }, StringSplitOptions.RemoveEmptyEntries)
+                                    .Select(s => s.Trim())
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .ToList();
+                    map[ver] = items;
+                }
+            }
+            return map;
+        }
+
+        private static string TryReadEmbeddedSummary()
+        {
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                var names = asm.GetManifestResourceNames();
+                var target = names.FirstOrDefault(n => n.EndsWith("UpdateSummary.md", StringComparison.OrdinalIgnoreCase));
+                if (string.IsNullOrEmpty(target)) return null;
+                using (var stream = asm.GetManifestResourceStream(target))
+                using (var reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }
