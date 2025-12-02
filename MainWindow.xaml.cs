@@ -945,7 +945,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             };
 
             var ok = dialog.ShowDialog(Application.Current?.MainWindow) ?? false;
-            var localZipPath = ok ? dialog.FileName : System.IO.Path.Combine(desktop, defaultFileName);
+            if (!ok)
+            {
+                // 用户取消保存对话框：不继续下载
+                packageInfo.StatusText = "下载已取消";
+                packageInfo.Status = PackageStatus.Ready;
+                return;
+            }
+            var localZipPath = dialog.FileName;
 
             // 启动仅下载流程并禁用按钮
             packageInfo.IsDownloadOnlyRunning = true;

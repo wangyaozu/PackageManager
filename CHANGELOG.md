@@ -2,6 +2,27 @@
 
 本文件基于仓库 `gitlog.md` 的提交历史按版本号归档，概述每个版本的主要改动与新增功能。
 
+## 2.0.1.0 — 2025-12-02
+
+- 产品定版支持：
+  - 在 `PackageConfigItem` 新增 `FinalizeFtpServerPath`，并更新多个产品的配置项以支持定版路径。
+  - 修改 `PackageEditWindow` 以支持新增或编辑定版路径。
+  - 在 `PackageItem` 与 `PackageInfo` 增加定版相关属性与逻辑。
+  - 在 `PackagesHomePage` 添加“定版”按钮并实现点击事件处理。
+  - 优化保存配置逻辑，支持重载无需重启。
+
+- 仅下载 ZIP 包：
+  - 在 `PackageInfo` 中新增 `DownloadZipOnlyRequested` 事件和相关属性。
+  - 实现仅下载 ZIP 包的命令逻辑与状态管理。
+  - 在 `PackageUpdateService` 中增加 `DownloadZipOnlyAsync` 方法。
+
+- 导航与入口：
+  - 新增定版下载功能入口。
+
+提交参考：
+- 8f79235d2c48141170a76652b4ee9d94f0e2324f — feat(package): 添加仅下载ZIP包功能
+- c90b397c86bb60097d2057a2156007816e40ffd4 — feat(package): 添加产品定版功能支持
+
 ## 2.0.0.0 — 2025-12-01
 
 - 交互与界面重构：
