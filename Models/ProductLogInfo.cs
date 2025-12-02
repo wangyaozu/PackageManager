@@ -29,7 +29,7 @@ namespace PackageManager.Models
             set => SetProperty(ref fileName, value);
         }
 
-        [DataGridColumn(2, DisplayName = "所在目录", Width = "370", IsReadOnly = true)]
+        [DataGridColumn(2, DisplayName = "所在目录", Width = "370", IsReadOnly = true,IsVisible = false)]
         public string Directory
         {
             get => directory;

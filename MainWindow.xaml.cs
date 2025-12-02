@@ -89,6 +89,7 @@ namespace PackageManager
         public ICommand LocalPathSettingsCommand { get; }
         public ICommand OpenLogViewerCommand { get; }
         public ICommand OpenProductLogsCommand { get; }
+        public ICommand OpenProductFinalizeCommand { get; }
         public ICommand OpenPackageConfigCommand { get; }
         public ICommand OpenCommonLinksPageCommand { get; }
         public ICommand OpenChangelogPageCommand { get; }
@@ -107,6 +108,10 @@ namespace PackageManager
 
             set => SetProperty(ref _latestActivePackage, value);
         }
+
+        // 产品定版数据集合
+        private ObservableCollection<FinalizePackageInfo> _finalizePackages = new ObservableCollection<FinalizePackageInfo>();
+        public ObservableCollection<FinalizePackageInfo> FinalizePackages => _finalizePackages;
 
         // 中央区域页面承载：主页与导航方法
         private PackageManager.Views.PackagesHomePage _homePage;
@@ -187,6 +192,7 @@ namespace PackageManager
             LocalPathSettingsCommand = new RelayCommand(() => { LocalPathSettingsButton_Click(this, new RoutedEventArgs()); });
             OpenLogViewerCommand = new RelayCommand(() => { OpenLogViewerButton_Click(this, new RoutedEventArgs()); });
             OpenProductLogsCommand = new RelayCommand(() => { OpenProductLogButton_Click(this, new RoutedEventArgs()); });
+            OpenProductFinalizeCommand = new RelayCommand(() => { OpenProductFinalizeButton_Click(this, new RoutedEventArgs()); });
             OpenPackageConfigCommand = new RelayCommand(() => { OpenPackageConfigButton_Click(this, new RoutedEventArgs()); });
             OpenCommonLinksPageCommand = new RelayCommand(OpenCommonLinksPage);
             OpenChangelogPageCommand = new RelayCommand(() => { OpenChangelogPageButton_Click(this, new RoutedEventArgs()); });
@@ -211,6 +217,9 @@ namespace PackageManager
             
             // 加载可执行文件版本
             await LoadExecutableVersionsAsync();
+
+            // 加载定版包列表
+            await LoadFinalizePackagesAsync();
         }
 
         private void InitializeCommonLinks()
@@ -949,6 +958,24 @@ namespace PackageManager
             }
         }
 
+        private void OpenProductFinalizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var page = new PackageManager.Views.ProductFinalizePage();
+                if (page is PackageManager.Views.ICentralPage icp)
+                {
+                    icp.RequestExit += () => NavigateHome();
+                }
+                NavigateTo(page);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "打开产品定版页面失败");
+                MessageBox.Show($"打开产品定版页面失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         /// <summary>
         /// 打开常用网址导航页面（窗口承载）
         /// </summary>
@@ -1027,6 +1054,169 @@ namespace PackageManager
             if (_dataPersistenceService.SaveMainWindowFilterCondition(filterManagerFilterConditions))
             {
                 SaveCurrentState();
+            }
+        }
+
+        /// <summary>
+        /// 加载产品定版包列表（基于配置的服务器路径，读取各版本目录与最新文件时间）
+        /// </summary>
+        private async Task LoadFinalizePackagesAsync()
+        {
+            try
+            {
+                FinalizePackages.Clear();
+
+                var builtIns = _dataPersistenceService.GetBuiltInFinalizePackageConfigs() ?? new List<DataPersistenceService.PackageConfigItem>();
+                var customs = _dataPersistenceService.LoadFinalizePackageConfigs() ?? new List<DataPersistenceService.PackageConfigItem>();
+
+                // 合并配置：用户配置覆盖同名内置项
+                var merged = new List<DataPersistenceService.PackageConfigItem>(builtIns);
+                foreach (var cu in customs)
+                {
+                    var existing = merged.FirstOrDefault(x => string.Equals(x.ProductName, cu.ProductName, StringComparison.OrdinalIgnoreCase));
+                    if (existing == null)
+                    {
+                        merged.Add(cu);
+                    }
+                    else
+                    {
+                        existing.FtpServerPath = string.IsNullOrWhiteSpace(cu.FtpServerPath) ? existing.FtpServerPath : cu.FtpServerPath;
+                        existing.LocalPath = string.IsNullOrWhiteSpace(cu.LocalPath) ? existing.LocalPath : cu.LocalPath;
+                        existing.SupportsConfigOps = cu.SupportsConfigOps;
+                    }
+                }
+
+                foreach (var cfg in merged)
+                {
+                    if (string.IsNullOrWhiteSpace(cfg.FtpServerPath))
+                        continue;
+
+                    var baseUrl = cfg.FtpServerPath.TrimEnd('/') + "/";
+                    List<string> dirs = new List<string>();
+                    try
+                    {
+                        dirs = await _ftpService.GetDirectoriesAsync(baseUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        Services.LoggingService.LogError(ex, $"读取定版目录失败：{cfg.ProductName} | {baseUrl}");
+                    }
+
+                    // 每产品一行：填充版本列表到下拉
+                    var info = new FinalizePackageInfo
+                    {
+                        ProductName = cfg.ProductName,
+                        LocalPath = cfg.LocalPath,
+                        FtpBasePath = baseUrl,
+                    };
+
+                    info.UpdateAvailableVersions(dirs);
+
+                    if (!string.IsNullOrEmpty(info.Version))
+                    {
+                        info.FtpServerPath = baseUrl + info.Version + "/";
+                        try
+                        {
+                            var files = await _ftpService.GetFilesAsync(info.FtpServerPath);
+                            if (files?.Count > 0)
+                            {
+                                var latest = files.Last();
+                                info.UploadPackageName = latest;
+                                var t = FtpService.ParseTimeFromFileName(latest);
+                                info.Time = t == DateTime.MinValue ? string.Empty : t.ToString("yyyy-MM-dd HH:mm");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Services.LoggingService.LogError(ex, $"加载定版文件列表失败：{info.FtpServerPath}");
+                        }
+                    }
+
+                    info.VersionChanged += OnFinalizeVersionChanged;
+                    info.DownloadRequested += FinalizeDownloadRequested;
+                    FinalizePackages.Add(info);
+                }
+            }
+            catch (Exception ex)
+            {
+                Services.LoggingService.LogError(ex, "加载定版包列表失败");
+            }
+        }
+
+        /// <summary>
+        /// 下载指定定版版本的全部文件到本地路径
+        /// </summary>
+        private async void FinalizeDownloadRequested(FinalizePackageInfo item)
+        {
+            try
+            {
+                var serverDir = item?.FtpServerPath;
+                if (string.IsNullOrWhiteSpace(serverDir))
+                {
+                    MessageBox.Show("服务器路径无效", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var localBase = item.LocalPath;
+                if (string.IsNullOrWhiteSpace(localBase))
+                {
+                    localBase = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PackageFinalize", item.ProductName ?? "Unknown");
+                }
+                var destDir = Path.Combine(localBase, item.Version ?? "Latest");
+                if (!Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
+
+                var files = await _ftpService.GetFilesAsync(serverDir);
+                if (files.Count == 0)
+                {
+                    MessageBox.Show("该版本下没有文件可下载", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                foreach (var name in files)
+                {
+                    var url = serverDir.TrimEnd('/') + "/" + name;
+                    var localPath = Path.Combine(destDir, name);
+                    using (var client = new System.Net.WebClient())
+                    {
+                        await client.DownloadFileTaskAsync(new Uri(url), localPath);
+                    }
+                }
+
+                Services.ToastService.ShowToast("下载完成", $"{item.ProductName} {item.Version} 定版文件已下载", "Success");
+            }
+            catch (Exception ex)
+            {
+                Services.LoggingService.LogError(ex, "下载定版文件失败");
+                MessageBox.Show($"下载失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 定版版本切换事件：更新服务器路径并刷新最新包时间
+        /// </summary>
+        private async void OnFinalizeVersionChanged(FinalizePackageInfo item, string newVersion)
+        {
+            try
+            {
+                if (item == null || string.IsNullOrWhiteSpace(newVersion) || string.IsNullOrWhiteSpace(item.FtpBasePath))
+                    return;
+
+                item.FtpServerPath = item.FtpBasePath.TrimEnd('/') + "/" + newVersion + "/";
+                item.UploadPackageName = string.Empty;
+                item.Time = string.Empty;
+
+                var files = await _ftpService.GetFilesAsync(item.FtpServerPath);
+                if (files?.Count > 0)
+                {
+                    var latest = files.Last();
+                    item.UploadPackageName = latest;
+                    var t = FtpService.ParseTimeFromFileName(latest);
+                    item.Time = t == DateTime.MinValue ? string.Empty : t.ToString("yyyy-MM-dd HH:mm");
+                }
+            }
+            catch (Exception ex)
+            {
+                Services.LoggingService.LogError(ex, $"切换定版版本失败：{item?.ProductName} | {item?.FtpServerPath}");
             }
         }
     }

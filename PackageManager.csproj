@@ -17,6 +17,7 @@
         <RuntimeIdentifiers>win</RuntimeIdentifiers>
         <!-- 为EXE设置桌面/资源管理器图标 -->
         <ApplicationIcon>Assets\Icons\App.ico</ApplicationIcon>
+        <LangVersion>latestmajor</LangVersion>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <PlatformTarget>AnyCPU</PlatformTarget>
@@ -117,6 +118,7 @@
         <Compile Include="Function\Setting\SettingsWindow.xaml.cs" />
         <Compile Include="Models\CategoryNode.cs" />
         <Compile Include="Models\ConfigPreset.cs" />
+        <Compile Include="Models\FinalizePackageInfo.cs" />
         <Compile Include="Models\PackageItem.cs" />
         <Compile Include="Models\ProductLogInfo.cs" />
         <Compile Include="Services\AdminElevationService.cs" />
@@ -138,6 +140,7 @@
           <SubType>Code</SubType>
         </Compile>
         <Compile Include="Views\PackageConfigPage.xaml.cs" />
+        <Compile Include="Views\ProductFinalizePage.xaml.cs" />
         <Compile Include="Views\ProductLogsPage.xaml.cs" />
         <Compile Include="Views\SettingsPage.xaml.cs" />
         <Page Include="Function\ConfigPreset\AddPresetWindow.xaml" />
@@ -193,6 +196,7 @@
           <SubType>Designer</SubType>
         </Page>
         <Page Include="Views\PackageConfigPage.xaml" />
+        <Page Include="Views\ProductFinalizePage.xaml" />
         <Page Include="Views\ProductLogsPage.xaml" />
         <Page Include="Views\SettingsPage.xaml" />
     </ItemGroup>
@@ -245,6 +249,7 @@
       <EmbeddedResource Include="CHANGELOG.md" />
       <Content Include="README.md" />
       <Content Include="scripts\GenerateIcon.ps1" />
+      <Content Include="scripts\release.py" />
       <Content Include="scripts\sign.config.json" />
       <Content Include="scripts\SignExe.ps1" />
       <Content Include="scripts\SignPackageManager.ps1" />

@@ -4,6 +4,23 @@
 
 ## 2.0.0.0 — 2025-12-01
 
+- 交互与界面重构：
+  - 新增 `CommonLinksPage` 与 `CommonLinksWindow`，实现常用网址导航页面。
+  - 新增 `LogViewerPage`，支持按类型/日期/级别筛选与搜索日志。
+  - 新增 `LocalPathSettingsPage`，支持产品本地路径分组设置。
+  - 主窗口集成左侧导航面板与中央页面框架；增加 `ICentralPage` 接口用于页面间通信。
+  - 优化数据表格列宽与显示效果。
+
+- 更新日志页面：
+  - 新增 `ChangelogPage` 展示 Markdown 格式的更新日志。
+  - 新增 `OpenChangelogPageCommand` 命令用于打开更新日志页面。
+  - 将 `CHANGELOG.md` 设置为内嵌资源以支持多路径加载。
+
+- 自动更新摘要：
+  - 改为异步加载版本更新摘要，避免 UI 阻塞。
+  - 将 `UpdateSummary.md` 更名为 `UpdateSummary.txt` 并移出嵌入资源，改为从远程服务器读取。
+  - `BuildUpdatePromptContent` 与 `LoadVersionSummaries` 改为异步实现。
+
 - 左侧导航改进：
   - 应用启动时默认选中“产品分类”，统一初始高亮状态。
   - 导航失败不更改选中项（如产品日志目录缺失时保留原选中项）。
@@ -11,6 +28,15 @@
 - 包管理配置重构：新增页面 `Views/PackageConfigPage`，抽象 `IPackageEditorHost` 以复用编辑/删除逻辑，更新 `Models/PackageItem` 依赖；主窗口命令改为导航到新页面。
 - 主页导航：点击“产品分类”导航到 `PackagesHomePage`，行为一致化。
 - 稳定性与交互优化：产品日志路径存在性检查与提示增强，日志查看页加载行为更稳健。
+
+- 缺陷修复：
+  - 修复“更新”和“签名取消”功能的启用状态控制不正确的问题。
+
+提交参考：
+- ad69b7e8 — feat(update): 异步加载版本更新摘要，改用远程 `UpdateSummary.txt`
+- 5d878137 — fix(PackageInfo): 修复更新和签名取消功能启用状态控制
+- fdb745d3 — feat(ui): 重构导航与更新日志页面
+- 711477f9 — feat(ui): 交互重构（链接、日志、路径、框架与接口）
 
 ## 1.0.14.0 — 2025-12-01
 

@@ -48,6 +48,7 @@ namespace PackageManager.Services
         private readonly string _settingsFilePath;
 
         private readonly string _packagesFilePath;
+        private readonly string _finalizePackagesFilePath;
 
         private readonly string _appFolder;
 
@@ -70,6 +71,7 @@ namespace PackageManager.Services
             _mainWindowStateFilePath = Path.Combine(_appFolder, "main_window_state.json");
             _settingsFilePath = Path.Combine(_appFolder, "settings.json");
             _packagesFilePath = Path.Combine(_appFolder, "packages.json");
+            _finalizePackagesFilePath = Path.Combine(_appFolder, "finalize_packages.json");
 
             _jsonSettings = new JsonSerializerSettings
             {
@@ -127,6 +129,44 @@ namespace PackageManager.Services
 
         public string GetPackagesConfigPath() => _packagesFilePath;
 
+        public List<PackageConfigItem> LoadFinalizePackageConfigs()
+        {
+            try
+            {
+                if (!File.Exists(_finalizePackagesFilePath))
+                {
+                    return new List<PackageConfigItem>();
+                }
+
+                var json = File.ReadAllText(_finalizePackagesFilePath);
+                var list = JsonConvert.DeserializeObject<List<PackageConfigItem>>(json, _jsonSettings);
+                return list ?? new List<PackageConfigItem>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载定版包配置失败: {ex.Message}");
+                return new List<PackageConfigItem>();
+            }
+        }
+
+        public bool SaveFinalizePackageConfigs(IEnumerable<PackageConfigItem> items)
+        {
+            try
+            {
+                var list = items?.ToList() ?? new List<PackageConfigItem>();
+                var json = JsonConvert.SerializeObject(list, _jsonSettings);
+                File.WriteAllText(_finalizePackagesFilePath, json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"保存定版包配置失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        public string GetFinalizePackagesConfigPath() => _finalizePackagesFilePath;
+
         public List<PackageConfigItem> GetBuiltInPackageConfigs()
         {
             return new List<PackageConfigItem>
@@ -140,6 +180,22 @@ namespace PackageManager.Services
                 new PackageConfigItem { ProductName = "建模大师（施工）Develop", FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(CST)/", LocalPath = @"C:\红瓦科技\建模大师（施工）Develop", SupportsConfigOps = true },
                 new PackageConfigItem { ProductName = "BuildMaster(Dazzle)", FtpServerPath = "http://doc-dev.hongwa.cc:8001/BuildMaster(Dazzle)/Dazzle.RevitApp/", LocalPath = @"C:\红瓦科技\BuildMaster(Dazzle)Develop", SupportsConfigOps = false },
                 new PackageConfigItem { ProductName = "TeamworkMaster(Develop)", FtpServerPath = "http://doc-dev.hongwa.cc:8001/TeamworkMaster/", LocalPath = @"C:\红瓦科技\TeamworkMaster(Develop)", SupportsConfigOps = true },
+            };
+        }
+
+        public List<PackageConfigItem> GetBuiltInFinalizePackageConfigs()
+        {
+            return new List<PackageConfigItem>
+            {
+                new PackageConfigItem { ProductName = "MaxiBim（管道）", FtpServerPath = "http://192.168.0.215:8001/Publish/MaxiBim（管道）/", LocalPath = @"C:\红瓦科技\MaxiBim（管道）", SupportsConfigOps = false },
+                new PackageConfigItem { ProductName = "MaxiBim（风管）", FtpServerPath = "http://192.168.0.215:8001/Publish/MaxiBim（风管）/", LocalPath = @"C:\红瓦科技\MaxiBim（风管）", SupportsConfigOps = false },
+                // 建模大师系列
+                new PackageConfigItem { ProductName = "建模大师（机电）", FtpServerPath = "http://192.168.0.215:8001/Publish/建模大师（机电）/", LocalPath = @"C:\红瓦科技\建模大师（CABE）", SupportsConfigOps = false },
+                new PackageConfigItem { ProductName = "建模大师（钢构）", FtpServerPath = "http://192.168.0.215:8001/Publish/建模大师（钢构）/", LocalPath = @"C:\红瓦科技\建模大师（钢构）", SupportsConfigOps = false },
+                new PackageConfigItem { ProductName = "建模大师（施工）", FtpServerPath = "http://192.168.0.215:8001/Publish/建模大师（施工）/", LocalPath = @"C:\红瓦科技\建模大师（施工）", SupportsConfigOps = false },
+                // MaxiBIM 常见目录
+                new PackageConfigItem { ProductName = "MaxiBIM（CAB）", FtpServerPath = "http://192.168.0.215:8001/Publish/MaxiBIM(CAB)/", LocalPath = @"C:\红瓦科技\MaxiBIM（CAB）", SupportsConfigOps = false },
+                new PackageConfigItem { ProductName = "MaxiBIM（SH）", FtpServerPath = "http://192.168.0.215:8001/Publish/MaxiBIM(SH)/", LocalPath = @"C:\红瓦科技\MaxiBIM（SH）", SupportsConfigOps = false },
             };
         }
 
