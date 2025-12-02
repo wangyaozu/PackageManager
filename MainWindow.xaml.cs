@@ -757,6 +757,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             package.VersionChanged += OnPackageVersionChanged;
             package.DownloadRequested += OnPackageDownloadRequested;
             package.UnlockAndDownloadRequested += OnUnlockAndDownloadRequested;
+            package.DownloadZipOnlyRequested += OnPackageDownloadZipOnlyRequested;
             package.DebugModeChanged += OnPackageDebugModeChanged;
             package.PropertyChanged += OnPackagePropertyChanged;
         }
@@ -810,6 +811,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     p.VersionChanged -= OnPackageVersionChanged;
                     p.DownloadRequested -= OnPackageDownloadRequested;
                     p.UnlockAndDownloadRequested -= OnUnlockAndDownloadRequested;
+                    p.DownloadZipOnlyRequested -= OnPackageDownloadZipOnlyRequested;
                     p.DebugModeChanged -= OnPackageDebugModeChanged;
                     p.PropertyChanged -= OnPackagePropertyChanged;
                 }
@@ -919,6 +921,81 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 }
             }
         });
+    }
+
+    /// <summary>
+    /// 仅下载ZIP包到用户选择的位置（不解压）。
+    /// </summary>
+    private async void OnPackageDownloadZipOnlyRequested(PackageInfo packageInfo)
+    {
+        try
+        {
+            // 选择保存位置（默认桌面）
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var defaultFileName = System.IO.Path.GetFileName(string.IsNullOrWhiteSpace(packageInfo.UploadPackageName)
+                ? $"{packageInfo.ProductName}.zip"
+                : packageInfo.UploadPackageName);
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "保存ZIP包",
+                Filter = "Zip 文件 (*.zip)|*.zip|所有文件 (*.*)|*.*",
+                FileName = defaultFileName,
+                InitialDirectory = string.IsNullOrWhiteSpace(desktop) ? Environment.CurrentDirectory : desktop,
+            };
+
+            var ok = dialog.ShowDialog(Application.Current?.MainWindow) ?? false;
+            var localZipPath = ok ? dialog.FileName : System.IO.Path.Combine(desktop, defaultFileName);
+
+            // 启动仅下载流程并禁用按钮
+            packageInfo.IsDownloadOnlyRunning = true;
+            packageInfo.Status = PackageStatus.Downloading;
+            packageInfo.StatusText = $"正在仅下载 {packageInfo.ProductName}...";
+
+            var cts = new System.Threading.CancellationTokenSource();
+            var success = await _updateService.DownloadZipOnlyAsync(
+                packageInfo,
+                localZipPath,
+                (progress, message) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        packageInfo.Progress = progress;
+                        packageInfo.StatusText = $"{packageInfo.ProductName}: {message}";
+                    });
+                },
+                cts.Token);
+
+            // 恢复按钮状态
+            packageInfo.IsDownloadOnlyRunning = false;
+
+            Dispatcher.Invoke(() =>
+            {
+                if (success)
+                {
+                    packageInfo.StatusText = $"{packageInfo.ProductName} 仅下载完成";
+                    packageInfo.Status = PackageStatus.Completed;
+                }
+                else
+                {
+                    if ((packageInfo.Status == PackageStatus.Ready) && string.Equals(packageInfo.StatusText, "已取消", StringComparison.Ordinal))
+                    {
+                        packageInfo.StatusText = $"{packageInfo.ProductName} 下载已取消";
+                    }
+                    else
+                    {
+                        packageInfo.StatusText = $"{packageInfo.ProductName} 下载失败";
+                        packageInfo.Status = PackageStatus.Error;
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            packageInfo.IsDownloadOnlyRunning = false;
+            packageInfo.Status = PackageStatus.Error;
+            packageInfo.StatusText = $"仅下载失败：{ex.Message}";
+        }
     }
 
     /// <summary>

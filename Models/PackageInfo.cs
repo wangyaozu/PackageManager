@@ -103,6 +103,10 @@ namespace PackageManager.Models
 
         private bool isReadOnly;
 
+        private bool isDownloadOnlyRunning;
+
+        private ICommand downloadOnlyCommand;
+
         private string time;
 
         private ICommand runEmbeddedToolCommand;
@@ -124,6 +128,8 @@ namespace PackageManager.Models
         public event Action<PackageInfo, bool> DebugModeChanged;
 
         public event Action<PackageInfo> UnlockAndDownloadRequested;
+
+        public event Action<PackageInfo> DownloadZipOnlyRequested;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -504,8 +510,29 @@ namespace PackageManager.Models
                 OnPropertyChanged(nameof(ConfigOpsEnabled));
                 OnPropertyChanged(nameof(UpdateCancelEnabled));
                 OnPropertyChanged(nameof(SignatureCancelEnabled));
+                OnPropertyChanged(nameof(DownloadOnlyEnabled));
             }
         }
+
+        /// <summary>
+        /// 仅下载流程是否运行中（用于禁用“仅下载”按钮）
+        /// </summary>
+        public bool IsDownloadOnlyRunning
+        {
+            get => isDownloadOnlyRunning;
+            set
+            {
+                if (SetProperty(ref isDownloadOnlyRunning, value))
+                {
+                    OnPropertyChanged(nameof(DownloadOnlyEnabled));
+                }
+            }
+        }
+
+        /// <summary>
+        /// “仅下载”按钮可用性：仅当未处于仅下载运行中且整体可用时启用
+        /// </summary>
+        public bool DownloadOnlyEnabled => !IsDownloadOnlyRunning && IsEnabled;
 
         /// <summary>
         /// 用于定版上传的目标FTP根路径
@@ -669,6 +696,15 @@ namespace PackageManager.Models
         /// 签名加密校验/取消切换命令（运行中时为取消，否则为校验）
         /// </summary>
         public ICommand SignatureToggleCommand => IsSignatureEncryptionRunning ? CancelEmbeddedToolCommand : RunEmbeddedToolCommand;
+
+        /// <summary>
+        /// 仅下载命令
+        /// </summary>
+        public ICommand DownloadOnlyCommand
+        {
+            get => downloadOnlyCommand ?? (downloadOnlyCommand = new RelayCommand(ExecuteDownloadOnly, () => DownloadOnlyEnabled));
+            set => SetProperty(ref downloadOnlyCommand, value);
+        }
 
         /// <summary>
         /// 更新按钮文案（运行中显示“取消”）
@@ -872,6 +908,32 @@ namespace PackageManager.Models
                 Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     StatusText = $"下载触发失败：{ex.Message}";
+                    Status = PackageStatus.Error;
+                }));
+            }
+        }
+
+        /// <summary>
+        /// 执行仅下载（不解压）操作
+        /// </summary>
+        private void ExecuteDownloadOnly()
+        {
+            try
+            {
+                LoggingService.LogInfo($"开始仅下载：Product={ProductName}, Url={DownloadUrl}");
+                if (string.IsNullOrWhiteSpace(DownloadUrl))
+                {
+                    LoggingService.LogWarning("下载地址为空，下载可能失败。请检查 FtpServerPath/Version/UploadPackageName。");
+                }
+
+                DownloadZipOnlyRequested?.Invoke(this);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "触发仅下载事件时发生异常");
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    StatusText = $"仅下载触发失败：{ex.Message}";
                     Status = PackageStatus.Error;
                 }));
             }

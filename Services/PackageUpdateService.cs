@@ -223,6 +223,90 @@ namespace PackageManager.Services
         }
 
         /// <summary>
+        /// 仅下载ZIP包到指定路径（不进行解压）。
+        /// </summary>
+        /// <param name="packageInfo">包信息</param>
+        /// <param name="localZipPath">保存的本地ZIP路径</param>
+        /// <param name="progressCallback">进度回调（0-100，消息文本）</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>成功与否</returns>
+        public async Task<bool> DownloadZipOnlyAsync(PackageInfo packageInfo, string localZipPath, Action<double, string> progressCallback = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    packageInfo.Status = PackageStatus.Ready;
+                    packageInfo.StatusText = "已取消";
+                    packageInfo.Progress = 0;
+                    return false;
+                }
+
+                // 更新状态为下载中
+                packageInfo.Status = PackageStatus.Downloading;
+                packageInfo.StatusText = "正在下载...";
+                progressCallback?.Invoke(0, "开始下载");
+
+                // 执行下载（完整进度显示到100）
+                var success = await DownloadFileAsync(packageInfo.DownloadUrl,
+                                                      localZipPath,
+                                                      progress =>
+                                                      {
+                                                          packageInfo.Progress = progress;
+                                                          progressCallback?.Invoke(progress, $"下载中... {progress:F1}%");
+                                                      },
+                                                      cancellationToken);
+
+                if (!success)
+                {
+                    packageInfo.Status = PackageStatus.Error;
+                    packageInfo.StatusText = "下载失败";
+                    LoggingService.LogWarning($"仅下载失败：Url={packageInfo?.DownloadUrl} -> {localZipPath}");
+                    return false;
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    packageInfo.Status = PackageStatus.Ready;
+                    packageInfo.StatusText = "已取消";
+                    packageInfo.Progress = 0;
+                    return false;
+                }
+
+                try
+                {
+                    var size = new FileInfo(localZipPath).Length;
+                    LoggingService.LogInfo($"仅下载完成：{localZipPath} | 大小={size} bytes");
+                    ToastService.ShowToast("下载完成", $"{Path.GetFileName(localZipPath)} 已保存", "Success");
+                }
+                catch
+                {
+                }
+
+                packageInfo.Status = PackageStatus.Completed;
+                packageInfo.StatusText = "下载完成";
+                packageInfo.Progress = 100;
+                progressCallback?.Invoke(100, "下载完成");
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                packageInfo.Status = PackageStatus.Ready;
+                packageInfo.StatusText = "已取消";
+                packageInfo.Progress = 0;
+                LoggingService.LogInfo($"仅下载已取消：{packageInfo?.ProductName}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                packageInfo.Status = PackageStatus.Error;
+                packageInfo.StatusText = $"下载失败: {ex.Message}";
+                LoggingService.LogError(ex, $"仅下载失败：{packageInfo?.ProductName} -> {localZipPath}");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 安全删除目录：去除只读属性，逐项删除，失败时返回false
         /// </summary>
         private static bool TrySafeDeleteDirectory(string path)
