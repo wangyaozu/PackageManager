@@ -90,6 +90,7 @@ namespace PackageManager.Models
         private ICommand openImageConfigCommand;
 
         private ICommand changeModeToDebugCommand;
+        private ICommand openDebugOptionsCommand;
 
         private bool isDebugMode;
 
@@ -403,7 +404,7 @@ namespace PackageManager.Models
             // },
             new ButtonConfig
             {
-                Text = "模式切换", Width = 60, Height = 26, CommandProperty = nameof(ChangeModeToDebugCommand), ToolTip = "切换调试模式与正常模式",
+                Text = "调试选项", Width = 80, Height = 26, CommandProperty = nameof(OpenDebugOptionsCommand), ToolTip = "查看并编辑 DebugSetting.json",
                 IsEnabledProperty = $"{nameof(ConfigOpsEnabled)}",
             },
 
@@ -442,6 +443,13 @@ namespace PackageManager.Models
             get => changeModeToDebugCommand ?? (changeModeToDebugCommand = new RelayCommand(ExecuteToggleDebugMode, () => SupportsConfigOps));
 
             set => SetProperty(ref changeModeToDebugCommand, value);
+        }
+
+        public ICommand OpenDebugOptionsCommand
+        {
+            get => openDebugOptionsCommand ?? (openDebugOptionsCommand = new RelayCommand(ExecuteOpenDebugOptions, () => SupportsConfigOps));
+
+            set => SetProperty(ref openDebugOptionsCommand, value);
         }
 
         /// <summary>
@@ -1069,7 +1077,7 @@ namespace PackageManager.Models
             bool target = !IsDebugMode;
             try
             {
-            DebugSettingsService.WriteIsDebugMode(EffectiveLocalPath, target);
+                DebugSettingsService.WriteIsDebugMode(EffectiveLocalPath, target);
             }
             catch
             {
@@ -1077,6 +1085,43 @@ namespace PackageManager.Models
 
             IsDebugMode = target;
             DebugModeChanged?.Invoke(this, target);
+        }
+
+        private void ExecuteOpenDebugOptions()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(EffectiveLocalPath))
+                {
+                    MessageBox.Show("本地包路径无效，请先在路径设置中配置。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                if (!Directory.Exists(EffectiveLocalPath))
+                {
+                    MessageBox.Show("本地包不存在，请先进行更新。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                var window = new PackageManager.Function.Setting.DebugOptionsWindow(EffectiveLocalPath)
+                {
+                    Owner = Application.Current?.MainWindow,
+                };
+                var ok = window.ShowDialog();
+                if (ok == true)
+                {
+                    try
+                    {
+                        bool isDebug = DebugSettingsService.ReadIsDebugMode(EffectiveLocalPath, IsDebugMode);
+                        IsDebugMode = isDebug;
+                        StatusText = "调试配置已保存";
+                        Status = PackageStatus.Completed;
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "打开调试选项失败");
+            }
         }
 
         /// <summary>

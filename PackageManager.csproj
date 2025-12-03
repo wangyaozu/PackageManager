@@ -162,6 +162,7 @@
         <Page Include="Function\PackageManage\PackageEditWindow.xaml" />
         <Page Include="Function\Path\LocalPathSettingsWindow.xaml" />
         <Page Include="Function\Setting\SettingsWindow.xaml" />
+        <Page Include="Function\Setting\DebugOptionsWindow.xaml" />
         <Page Include="MainWindow.xaml">
             <Generator>MSBuild:Compile</Generator>
             <SubType>Designer</SubType>
@@ -169,6 +170,10 @@
         <Compile Include="App.xaml.cs">
             <DependentUpon>App.xaml</DependentUpon>
             <SubType>Code</SubType>
+        </Compile>
+        <Compile Include="Function\Setting\DebugOptionsWindow.xaml.cs">
+          <DependentUpon>DebugOptionsWindow.xaml</DependentUpon>
+          <SubType>Code</SubType>
         </Compile>
         <Compile Include="MainWindow.xaml.cs">
             <DependentUpon>MainWindow.xaml</DependentUpon>
