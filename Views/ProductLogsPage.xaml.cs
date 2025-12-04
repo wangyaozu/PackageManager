@@ -22,6 +22,10 @@ namespace PackageManager.Views
 
         public ObservableCollection<ProductLogInfo> ProductLogs { get; } = new ObservableCollection<ProductLogInfo>();
         public ObservableCollection<ProductLogInfo> RevitLogs { get; } = new ObservableCollection<ProductLogInfo>();
+        public ObservableCollection<ApplicationVersion> RevitExecutableVersions { get; } = new ObservableCollection<ApplicationVersion>();
+
+        public string SelectedRevitExecutableVersion { get; set; }
+        
 
         public ProductLogsPage(string baseDir)
         {
@@ -31,10 +35,11 @@ namespace PackageManager.Views
             _applicationFinderService = new ApplicationFinderService();
             _settings = _dataPersistenceService.LoadSettings();
 
+            DataContext = this;
             BaseDirText.Text = $"日志目录: {_baseDir}";
             RefreshLogs();
 
-            EnsureRevitDirFromContext();
+            EnsureRevitDirFromCache();
         }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -139,27 +144,41 @@ namespace PackageManager.Views
             RequestExit?.Invoke();
         }
 
-        private void EnsureRevitDirFromContext()
+        private void RevitVersionCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var ver = (e.AddedItems.Count > 0 ? (e.AddedItems[0] as ApplicationVersion)?.Version : null) ?? string.Empty;
+            var baseLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var dir = string.IsNullOrWhiteSpace(ver) ? null : Path.Combine(baseLocal, "Autodesk", "Revit", $"Autodesk Revit {ver}", "Journals");
+            SetRevitJournalDir(dir);
+        }
+
+        private void EnsureRevitDirFromCache()
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(_revitDir)) return;
-                var mw = Application.Current?.MainWindow as MainWindow;
-                var pkg = mw?.LatestActivePackage;
-                if (pkg == null) { SetRevitJournalDir(null); return; }
-
-                string ver = null;
-                var av = pkg.AvailableExecutableVersions?.FirstOrDefault(x => x.DisPlayName == pkg.SelectedExecutableVersion);
-                ver = av?.Version;
-                if (string.IsNullOrWhiteSpace(ver))
+                if (RevitExecutableVersions.Count == 0)
                 {
-                    var m = Regex.Match(pkg.SelectedExecutableVersion ?? string.Empty, "(\\d{4})");
-                    ver = m.Success ? m.Groups[1].Value : null;
+                    var programName = "Revit";
+                    var cached = _dataPersistenceService.GetCachedData(programName) ?? new System.Collections.Generic.List<ApplicationVersion>();
+                    if (!cached.Any())
+                    {
+                        var found = _applicationFinderService.FindAllApplicationVersions(programName) ?? new System.Collections.Generic.List<ApplicationVersion>();
+                        if (found.Any())
+                        {
+                            _dataPersistenceService.UpdateCachedData(programName, found);
+                            cached = found;
+                        }
+                    }
+                    foreach (var v in cached)
+                    {
+                        RevitExecutableVersions.Add(v);
+                    }
                 }
-                if (string.IsNullOrWhiteSpace(ver)) { SetRevitJournalDir(null); return; }
 
+                var ver = RevitExecutableVersions.FirstOrDefault()?.Version;
+                SelectedRevitExecutableVersion = RevitExecutableVersions.FirstOrDefault()?.DisPlayName;
                 var baseLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var dir = Path.Combine(baseLocal, "Autodesk", "Revit", $"Autodesk Revit {ver}", "Journals");
+                var dir = string.IsNullOrWhiteSpace(ver) ? null : Path.Combine(baseLocal, "Autodesk", "Revit", $"Autodesk Revit {ver}", "Journals");
                 SetRevitJournalDir(dir);
             }
             catch

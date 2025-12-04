@@ -10,46 +10,55 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,12">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,6,0,0">
-                <TextBlock x:Name="BaseDirText" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <button:CButton Content="刷新" Width="100" Click="RefreshButton_Click"/>
-            </StackPanel>
-            
-            <C:CDataGrid x:Name="ProductLogGrid" Grid.Row="1"
-                         TextAlignment="Left"
-                         EnableAutoTemplateSelection="True"
-                         Margin="0,0,0,12"
-                         VerticalScrollBarVisibility="Auto"/>
-            
-        </Grid>
-        
-        <Grid Grid.Row="1" Margin="0,0,0,12">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,6,0,0">
-                <TextBlock x:Name="RevitDirText" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <button:CButton Content="重新选择" Width="100" Click="ReSelectButton_Click"/>
-            </StackPanel>
-            <C:CDataGrid x:Name="RevitLogGrid" Grid.Row="1"
-                         TextAlignment="Left"
-                         EnableAutoTemplateSelection="True"
-                         Margin="0,0,0,12"
-                         VerticalScrollBarVisibility="Auto"/>
-        </Grid>
-        
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+        <controls:CTabControl Grid.Row="0">
+            <TabItem Header="产品日志" Height="40">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock x:Name="BaseDirText" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                        <button:CButton Content="刷新" Width="100" Click="RefreshButton_Click"/>
+                    </StackPanel>
+                    <C:CDataGrid x:Name="ProductLogGrid" Grid.Row="1"
+                                 TextAlignment="Left"
+                                 EnableAutoTemplateSelection="True"
+                                 Margin="0,12,0,0"
+                                 VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Revit日志" Height="40">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock x:Name="RevitDirText" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,6">
+                        <controls:CTextBlock Text="可执行版本" Width="100" VerticalAlignment="Center"/>
+                        <controls:CComboBox ItemsSource="{Binding RevitExecutableVersions}"
+                                            DisplayMemberPath="DisPlayName"
+                                            SelectedValuePath="DisPlayName"
+                                            SelectedValue="{Binding SelectedRevitExecutableVersion}"
+                                            Width="280" SelectionChanged="RevitVersionCombo_SelectionChanged"/>
+                    </StackPanel>
+                    <C:CDataGrid x:Name="RevitLogGrid" Grid.Row="2"
+                                 TextAlignment="Left"
+                                 EnableAutoTemplateSelection="True"
+                                 Margin="0,12,0,0"
+                                 VerticalScrollBarVisibility="Auto"/>
+                </Grid>
+            </TabItem>
+        </controls:CTabControl>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <button:CButton Content="返回" Width="100" Click="CloseButton_Click"/>
         </StackPanel>
     </Grid>

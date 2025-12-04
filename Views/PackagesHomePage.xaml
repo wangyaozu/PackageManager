@@ -114,9 +114,7 @@
                                 <button:CButton Content="CSV加解密" Width="100" Margin="0,0,8,0" Click="OpenCsvCryptoWindowButton_Click"/>
                                 <button:CButton Content="DNS" Width="80" Margin="0,0,8,0" Click="OpenDnsSettingsWindowButton_Click" IsEnabled="{Binding LatestActivePackage.IsTeamworkMasterDevelop}"/>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                                <button:CButton Content="Revit日志" Width="90" Margin="0,0,8,0" Click="OpenRevitLogsButton_Click"/>
-                            </StackPanel>
+                            
                             </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
