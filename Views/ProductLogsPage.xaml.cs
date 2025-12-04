@@ -55,7 +55,7 @@ namespace PackageManager.Views
 
                 if (string.IsNullOrWhiteSpace(_baseDir) || !Directory.Exists(_baseDir))
                 {
-                    MessageBox.Show("日志目录不存在", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    LoggingService.LogWarning($"日志目录 {_baseDir}不存在");
                     return;
                 }
 

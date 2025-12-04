@@ -231,7 +231,7 @@ namespace PackageManager.Services
 
                 foreach (var keyPath in registryKeys)
                 {
-                    using (var key = Registry.LocalMachine.OpenSubKey(keyPath))
+                    using (var key = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64).OpenSubKey(keyPath))
                     {
                         if (key == null) continue;
 

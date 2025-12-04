@@ -1222,10 +1222,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OnPackagePropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        if ((e.PropertyName == nameof(PackageInfo.StatusText)) && sender is PackageInfo pkg)
-        {
-            Dispatcher.Invoke(() => { LatestActivePackage = pkg; });
-        }
+        // if ((e.PropertyName == nameof(PackageInfo.StatusText)) && sender is PackageInfo pkg)
+        // {
+        //     Dispatcher.Invoke(() => { LatestActivePackage = pkg; });
+        // }
     }
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e)
@@ -1349,27 +1349,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
 
             var baseDir = Path.Combine(Path.GetTempPath(), "HongWaSoftLog");
-            if (string.IsNullOrWhiteSpace(baseDir) || !Directory.Exists(baseDir))
-            {
-                MessageBox.Show("本地路径不存在，无法打开日志", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             var page = new ProductLogsPage(baseDir);
-            string revitDir = null;
-            var av = pkg.AvailableExecutableVersions?.FirstOrDefault(x => x.DisPlayName == pkg.SelectedExecutableVersion);
-            var ver = av?.Version;
-            if (string.IsNullOrWhiteSpace(ver))
-            {
-                var m = System.Text.RegularExpressions.Regex.Match(pkg.SelectedExecutableVersion ?? string.Empty, "(\\d{4})");
-                ver = m.Success ? m.Groups[1].Value : null;
-            }
-            if (!string.IsNullOrWhiteSpace(ver))
-            {
-                var baseLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                revitDir = Path.Combine(baseLocal, "Autodesk", "Revit", $"Autodesk Revit {ver}", "Journals");
-            }
-            page.SetRevitJournalDir(revitDir);
             if (page is ICentralPage icp)
             {
                 icp.RequestExit += () => NavigateHome();
