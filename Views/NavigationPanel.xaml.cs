@@ -29,6 +29,16 @@ namespace PackageManager.Views
             Loaded += NavigationPanel_Loaded;
         }
 
+        public void SelectActionByName(string name)
+        {
+            var item = ActionItems.FirstOrDefault(i => i.Name == name);
+            if (item == null) return;
+            _revertingSelection = true;
+            ActionListBox.SelectedItem = item;
+            _lastSelectedItem = item;
+            _revertingSelection = false;
+        }
+
         private void NavigationPanel_Loaded(object sender, RoutedEventArgs e)
         {
             var mw = Window.GetWindow(this) as MainWindow;

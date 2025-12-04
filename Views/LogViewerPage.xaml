@@ -14,7 +14,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 统一面包屑 + 页标题 -->
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
             <TextBlock Text="日志类型:" VerticalAlignment="Center" Margin="0,0,6,0"/>

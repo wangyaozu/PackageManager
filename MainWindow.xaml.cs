@@ -407,6 +407,26 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         CentralFrame.Navigate(page);
         NavigationVersion++;
         IsHomeActive = false;
+
+        // 同步左侧导航选中项
+        try
+        {
+            var name = (page is ProductLogsPage) ? "产品日志"
+                       : (page is LogViewerPage) ? "软件日志"
+                       : (page is PackageConfigPage) ? "产品管理"
+                       : (page is SettingsPage) ? "软件设置"
+                       : null;
+            if (!string.IsNullOrEmpty(name))
+            {
+                LeftNavPanel?.SelectActionByName(name);
+            }
+        }
+        catch { }
+    }
+
+    public void UpdateLeftNavSelection(string name)
+    {
+        try { LeftNavPanel?.SelectActionByName(name); } catch { }
     }
 
     private CustomControlLibrary.CustomControl.Controls.DataGrid.CDataGrid GetPackageDataGrid()

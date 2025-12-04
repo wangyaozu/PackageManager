@@ -58,7 +58,7 @@
         </Grid.ColumnDefinitions>
 
             <!-- 左侧导航面板 -->
-            <views:NavigationPanel Grid.Column="0" />
+            <views:NavigationPanel x:Name="LeftNavPanel" Grid.Column="0" />
 
             <!-- 左侧与中间的分隔条 -->
             <GridSplitter Grid.Column="1"

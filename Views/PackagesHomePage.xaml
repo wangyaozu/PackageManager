@@ -109,12 +109,15 @@
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                                 <button:CButton Content="参数目录" Command="{Binding LatestActivePackage.OpenParameterConfigCommand}" Width="80" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
-                                <button:CButton Content="调试选项" Command="{Binding LatestActivePackage.OpenDebugOptionsCommand}" Width="90" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
+                                <button:CButton Content="调试选项" Command="{Binding LatestActivePackage.OpenDebugOptionsCommand}" Width="80" Margin="0,0,8,0" IsEnabled="{Binding LatestActivePackage.ConfigOpsEnabled}" />
                                 <button:CButton Content="{Binding LatestActivePackage.SignatureToggleText}" Command="{Binding LatestActivePackage.SignatureToggleCommand}" Width="100" IsEnabled="{Binding LatestActivePackage.SignatureCancelEnabled}" />
                                 <button:CButton Content="CSV加解密" Width="100" Margin="0,0,8,0" Click="OpenCsvCryptoWindowButton_Click"/>
                                 <button:CButton Content="DNS" Width="80" Margin="0,0,8,0" Click="OpenDnsSettingsWindowButton_Click" IsEnabled="{Binding LatestActivePackage.IsTeamworkMasterDevelop}"/>
                             </StackPanel>
-                        </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                <button:CButton Content="Revit日志" Width="90" Margin="0,0,8,0" Click="OpenRevitLogsButton_Click"/>
+                            </StackPanel>
+                            </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
 

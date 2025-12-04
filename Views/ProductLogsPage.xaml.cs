@@ -20,6 +20,7 @@ namespace PackageManager.Views
         public event Action RequestExit;
 
         public ObservableCollection<ProductLogInfo> ProductLogs { get; } = new ObservableCollection<ProductLogInfo>();
+        public ObservableCollection<ProductLogInfo> RevitLogs { get; } = new ObservableCollection<ProductLogInfo>();
 
         public ProductLogsPage(string baseDir)
         {
@@ -50,10 +51,11 @@ namespace PackageManager.Views
                     return;
                 }
 
-                var files = Directory.GetFiles(_baseDir, "*.log", SearchOption.AllDirectories);
-                foreach (var file in files)
+                var files = Directory.EnumerateFiles(_baseDir, "*.log", SearchOption.AllDirectories)
+                                      .Select(f => new FileInfo(f))
+                                      .OrderByDescending(fi => fi.LastWriteTime);
+                foreach (var fi in files)
                 {
-                    var fi = new FileInfo(file);
                     var model = new ProductLogInfo
                     {
                         FileName = fi.Name,
@@ -77,6 +79,61 @@ namespace PackageManager.Views
                 LoggingService.LogError(ex, "刷新产品日志失败");
                 MessageBox.Show($"刷新产品日志失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private string _revitDir;
+
+        public void SetRevitJournalDir(string dir)
+        {
+            _revitDir = dir;
+            RevitDirText.Text = string.IsNullOrWhiteSpace(dir) ? "Revit日志目录: 未选择" : $"Revit日志目录: {dir}";
+            RefreshRevitLogs();
+        }
+
+        private void RefreshRevitLogs()
+        {
+            try
+            {
+                RevitLogs.Clear();
+
+                if (string.IsNullOrWhiteSpace(_revitDir) || !Directory.Exists(_revitDir))
+                {
+                    RevitLogGrid.ItemsSource = null;
+                    return;
+                }
+
+                var files = Directory.EnumerateFiles(_revitDir, "*.txt", SearchOption.TopDirectoryOnly)
+                                      .Select(f => new FileInfo(f))
+                                      .OrderByDescending(fi => fi.LastWriteTime);
+                foreach (var fi in files)
+                {
+                    var model = new ProductLogInfo
+                    {
+                        FileName = fi.Name,
+                        Directory = fi.DirectoryName,
+                        FullPath = fi.FullName,
+                        SizeText = FormatSize(fi.Length),
+                        ModifiedText = fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    };
+
+                    model.OpenWithLogViewProCommand = new RelayCommand(() => OpenWithLogViewPro(model));
+                    model.OpenWithVSCodeCommand = new RelayCommand(() => OpenWithVSCode(model));
+                    model.OpenWithNotepadCommand = new RelayCommand(() => OpenWithNotepad(model));
+
+                    RevitLogs.Add(model);
+                }
+
+                RevitLogGrid.ItemsSource = RevitLogs;
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "刷新Revit日志失败");
+            }
+        }
+
+        private void ReSelectButton_Click(object sender, RoutedEventArgs e)
+        {
+            RequestExit?.Invoke();
         }
 
         private string FormatSize(long size)
