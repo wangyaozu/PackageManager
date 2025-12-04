@@ -238,6 +238,19 @@ namespace PackageManager.Views
             RequestExit?.Invoke();
         }
 
+        private async void UpgradeToLatestButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var svc = new AppUpdateService();
+                await svc.UpgradeToLatestAsync(Application.Current?.MainWindow);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"升级到最新失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

@@ -97,6 +97,75 @@ namespace PackageManager.Services
             }
         }
 
+        /// <summary>
+        /// 直接升级到最新版本：与“发现新版本后选择立即更新”一致，但不弹窗提示。
+        /// 哪怕版本号是最新的也要执行，同版本号本地的exe也不一定是最新
+        /// </summary>
+        public async Task UpgradeToLatestAsync(Window owner = null)
+        {
+            string serverUrl = GetUpdateServerUrl();
+
+            Version current = GetCurrentVersion();
+            Version latest = null;
+            string latestDir = null;
+
+            try
+            {
+                var dirs = await ftpService.GetDirectoriesAsync(serverUrl);
+                var candidates = dirs
+                                 .Select(d => new { d, ver = TryExtractVersionFromName(d) })
+                                 .Where(x => x.ver != null)
+                                 .OrderBy(x => NormalizeVersion(x.ver))
+                                 .ToList();
+
+                if (candidates.Count == 0)
+                {
+                    LoggingService.LogWarning("更新服务器上未发现版本目录，跳过升级。");
+                    MessageBox.Show(owner ?? Application.Current.MainWindow, "未找到可用版本目录", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                latestDir = candidates.Last().d;
+                latest = NormalizeVersion(candidates.Last().ver);
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "获取更新版本信息失败");
+                MessageBox.Show(owner ?? Application.Current.MainWindow, "读取更新服务器失败，详细信息见错误日志。", "更新失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                var exeUrl = CombineUrl(serverUrl, latestDir, "PackageManager.exe");
+                var tempExe = Path.Combine(Path.GetTempPath(), "PackageManager_new.exe");
+
+                await DownloadAsync(exeUrl, tempExe);
+
+                var oldExe = Process.GetCurrentProcess().MainModule.FileName;
+                var scriptPath = Path.Combine(Path.GetTempPath(), "pm_update.cmd");
+                var script = BuildReplaceScript(oldExe, tempExe);
+                File.WriteAllText(scriptPath, script);
+
+                ToastService.ShowToast("升级开始", $"正在切换到新版本：{latest}");
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                });
+
+                Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                LoggingService.LogError(ex, "下载或切换新版本失败");
+                MessageBox.Show(owner ?? Application.Current.MainWindow, "升级失败，详细信息见错误日志。", "更新失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private static Version GetCurrentVersion()
         {
             try

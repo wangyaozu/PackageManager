@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using PackageManager.Models;
 using PackageManager.Services;
+using System.Text.RegularExpressions;
 
 namespace PackageManager.Views
 {
@@ -32,6 +33,8 @@ namespace PackageManager.Views
 
             BaseDirText.Text = $"日志目录: {_baseDir}";
             RefreshLogs();
+
+            EnsureRevitDirFromContext();
         }
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -134,6 +137,35 @@ namespace PackageManager.Views
         private void ReSelectButton_Click(object sender, RoutedEventArgs e)
         {
             RequestExit?.Invoke();
+        }
+
+        private void EnsureRevitDirFromContext()
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_revitDir)) return;
+                var mw = Application.Current?.MainWindow as MainWindow;
+                var pkg = mw?.LatestActivePackage;
+                if (pkg == null) { SetRevitJournalDir(null); return; }
+
+                string ver = null;
+                var av = pkg.AvailableExecutableVersions?.FirstOrDefault(x => x.DisPlayName == pkg.SelectedExecutableVersion);
+                ver = av?.Version;
+                if (string.IsNullOrWhiteSpace(ver))
+                {
+                    var m = Regex.Match(pkg.SelectedExecutableVersion ?? string.Empty, "(\\d{4})");
+                    ver = m.Success ? m.Groups[1].Value : null;
+                }
+                if (string.IsNullOrWhiteSpace(ver)) { SetRevitJournalDir(null); return; }
+
+                var baseLocal = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var dir = Path.Combine(baseLocal, "Autodesk", "Revit", $"Autodesk Revit {ver}", "Journals");
+                SetRevitJournalDir(dir);
+            }
+            catch
+            {
+                SetRevitJournalDir(null);
+            }
         }
 
         private string FormatSize(long size)
