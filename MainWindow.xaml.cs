@@ -13,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using CustomControlLibrary.CustomControl.Controls.DataGrid;
 using CustomControlLibrary.CustomControl.Controls.DataGrid.Filter;
 using PackageManager.Function.CsvTool;
 using PackageManager.Function.DnsTool;
@@ -449,8 +450,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         // 应用筛选与排序到主页网格（如果已创建）
         GetPackageDataGrid()?.ApplyFiltersAndSorts();
 
-        await LoadVersionsFromFtpAsync();
-
+        // await LoadVersionsFromFtpAsync();
+        await LoadVersionsWhichVisiableFromFtpAsync();
+        
         // 加载可执行文件版本
         await LoadExecutableVersionsAsync();
     }
@@ -687,6 +689,57 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         // 重新构建分类导航，确保新增包或产品名变更反映到左侧
         BuildCategoryTree();
     }
+    
+    /// <summary>
+    /// 从FTP服务器加载版本信息
+    /// </summary>
+    private async Task LoadVersionsWhichVisiableFromFtpAsync()
+    {
+        var dataGrid = GetPackageDataGrid();
+        if (dataGrid == null)
+        {
+            return;
+        }
+
+        try
+        {
+            dataGrid.ApplyFiltersAndSorts();
+            var filteredPackages = new System.Collections.Generic.List<PackageInfo>();
+            var view = CollectionViewSource.GetDefaultView(dataGrid.ItemsSource);
+            if (view != null)
+            {
+                foreach (var obj in view)
+                {
+                    if (obj is PackageInfo pkg) filteredPackages.Add(pkg);
+                }
+            }
+            else
+            {
+                foreach (var obj in dataGrid.Items)
+                {
+                    if (obj is PackageInfo pkg) filteredPackages.Add(pkg);
+                }
+            }
+
+            if (filteredPackages.Count == 0) return;
+
+            foreach (var pkg in filteredPackages)
+            {
+                pkg.Version = string.Empty;
+                pkg.UploadPackageName = string.Empty;
+            }
+
+            foreach (var pkg in filteredPackages)
+            {
+                await LoadPackageDataAsync(pkg);
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggingService.LogError(ex, "仅刷新可见行版本信息失败");
+        }
+    }
+    
 
     /// <summary>
     /// 加载单个包的数据（版本和文件列表）
@@ -847,7 +900,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             NavigateHome();
 
             // 自动加载各包的版本与文件信息（异步，不阻塞UI）
-            _ = LoadVersionsFromFtpAsync();
+            // _ = LoadVersionsFromFtpAsync();
+            
+            _ = LoadVersionsWhichVisiableFromFtpAsync();
         }
         catch (Exception ex)
         {
@@ -1082,8 +1137,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     /// </summary>
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
+        // 重新加载可见包的版本和文件信息
+        await LoadVersionsWhichVisiableFromFtpAsync();
+        
         // 重新加载所有包的版本和文件信息
-        await LoadVersionsFromFtpAsync();
+        //await LoadVersionsFromFtpAsync();
     }
 
     /// <summary>
@@ -1222,10 +1280,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OnPackagePropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        // if ((e.PropertyName == nameof(PackageInfo.StatusText)) && sender is PackageInfo pkg)
-        // {
-        //     Dispatcher.Invoke(() => { LatestActivePackage = pkg; });
-        // }
+        if ((e.PropertyName == nameof(PackageInfo.StatusText)) && sender is PackageInfo pkg)
+        {
+            Dispatcher.Invoke(() => { LatestActivePackage = pkg; });
+        }
     }
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e)
@@ -1395,5 +1453,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             SaveCurrentState();
         }
+
+        _ = LoadVersionsWhichVisiableFromFtpAsync();
     }
 }
