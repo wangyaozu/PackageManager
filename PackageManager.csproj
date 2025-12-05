@@ -222,7 +222,7 @@
     </ItemGroup>
   <ItemGroup>
     <Reference Include="CustomControlLibrary">
-      <HintPath>E:\TestCustomControl\CustomControlLibrary\bin\Debug\CustomControlLibrary.dll</HintPath>
+      <HintPath>..\..Assets\Tools\Debug\CustomControlLibrary.dll</HintPath>
     </Reference>
   </ItemGroup>
   <PropertyGroup>
@@ -249,6 +249,7 @@
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Include="CHANGELOG.md" />
+      <Content Include="Assets\Tools\CustomControlLibrary.dll" />
       <Content Include="Assets\Tools\FtpPublisher.exe" />
       <Content Include="README.md" />
       <Content Include="scripts\GenerateIcon.ps1" />
