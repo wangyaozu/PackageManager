@@ -780,6 +780,33 @@ namespace PackageManager.Services
                         catch { }
                     }
                 }, cancellationToken);
+
+                var remaining = procs.Where(p =>
+                {
+                    try { return !p.HasExited; } catch { return true; }
+                }).ToList();
+
+                if (remaining.Count > 0 && !AdminElevationService.IsRunningAsAdministrator())
+                {
+                    foreach (var p in remaining)
+                    {
+                        if (cancellationToken.IsCancellationRequested) break;
+                        try
+                        {
+                            var psi = new ProcessStartInfo
+                            {
+                                FileName = "cmd.exe",
+                                Arguments = $"/c taskkill /PID {p.Id} /F",
+                                UseShellExecute = true,
+                                Verb = "runas",
+                                WindowStyle = ProcessWindowStyle.Hidden,
+                            };
+                            var proc = Process.Start(psi);
+                            proc.WaitForExit(5000);
+                        }
+                        catch { }
+                    }
+                }
             }
             catch { }
 
