@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace PackageManager.Services
 {
@@ -76,7 +77,7 @@ namespace PackageManager.Services
                 var oldExe = Process.GetCurrentProcess().MainModule.FileName;
                 var scriptPath = Path.Combine(Path.GetTempPath(), "pm_update.cmd");
                 var script = BuildReplaceScript(oldExe, tempExe);
-                File.WriteAllText(scriptPath, script);
+                File.WriteAllText(scriptPath, script, Encoding.Default);
 
                 ToastService.ShowToast("更新开始", "正在切换到新版本……");
 
@@ -145,7 +146,7 @@ namespace PackageManager.Services
                 var oldExe = Process.GetCurrentProcess().MainModule.FileName;
                 var scriptPath = Path.Combine(Path.GetTempPath(), "pm_update.cmd");
                 var script = BuildReplaceScript(oldExe, tempExe);
-                File.WriteAllText(scriptPath, script);
+                File.WriteAllText(scriptPath, script, Encoding.Default);
 
                 ToastService.ShowToast("升级开始", $"正在切换到新版本：{latest}");
 

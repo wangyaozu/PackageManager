@@ -8,7 +8,7 @@ namespace PackageManager.Services
 {
     public static class ConfigPresetStore
     {
-        private static string PresetsFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config", "UserPresets.json");
+        private static string PresetsFilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PackageManager", "UserPresets.json");
 
         public static List<ConfigPreset> Load()
         {
