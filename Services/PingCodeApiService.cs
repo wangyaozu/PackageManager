@@ -35,6 +35,13 @@ namespace PackageManager.Services
             public double InProgress { get; set; }
             public double Done { get; set; }
             public double Total { get; set; }
+            
+            public int HighestPriorityCount { get; set; }
+            public double HighestPriorityPoints { get; set; }
+            public int HigherPriorityCount { get; set; }
+            public double HigherPriorityPoints { get; set; }
+            public int OtherPriorityCount { get; set; }
+            public double OtherPriorityPoints { get; set; }
         }
         
         private static double ReadDouble(JToken t)
@@ -59,6 +66,50 @@ namespace PackageManager.Services
             return t.ToString();
         }
         
+        private static string ExtractId(JToken t)
+        {
+            if (t == null) return null;
+            if (t.Type == JTokenType.Object)
+            {
+                var id = t.Value<string>("id");
+                if (!string.IsNullOrWhiteSpace(id)) return id;
+                var value = t.Value<string>("value");
+                if (!string.IsNullOrWhiteSpace(value)) return value;
+                var name = t.Value<string>("name");
+                if (!string.IsNullOrWhiteSpace(name)) return name;
+                return t.ToString();
+            }
+            if (t.Type == JTokenType.String) return t.Value<string>();
+            return t.ToString();
+        }
+        
+        private static string ExtractName(JToken t)
+        {
+            if (t == null) return null;
+            if (t.Type == JTokenType.Object)
+            {
+                var display = t.Value<string>("display_name");
+                if (!string.IsNullOrWhiteSpace(display)) return display;
+                var name = t.Value<string>("name");
+                if (!string.IsNullOrWhiteSpace(name)) return name;
+                var value = t.Value<string>("value");
+                if (!string.IsNullOrWhiteSpace(value)) return value;
+                return t.ToString();
+            }
+            if (t.Type == JTokenType.String) return t.Value<string>();
+            return t.ToString();
+        }
+        
+        private static string FirstNonEmpty(params string[] values)
+        {
+            if (values == null) return null;
+            foreach (var v in values)
+            {
+                if (!string.IsNullOrWhiteSpace(v)) return v;
+            }
+            return null;
+        }
+        
         private static string ReadStatus(JToken v)
         {
             var s = ExtractString(v["status"]);
@@ -66,6 +117,38 @@ namespace PackageManager.Services
             if (string.IsNullOrWhiteSpace(s)) s = ExtractString(v["fields"]?["status"]);
             if (string.IsNullOrWhiteSpace(s)) s = ExtractString(v["fields"]?["state"]);
             return s;
+        }
+        
+        private enum PriorityCategory
+        {
+            Highest,
+            Higher,
+            Other
+        }
+        
+        private static string ReadPriorityText(JToken v)
+        {
+            var p = ExtractString(v?["priority"]);
+            if (string.IsNullOrWhiteSpace(p)) p = ExtractString(v?["fields"]?["priority"]);
+            if (string.IsNullOrWhiteSpace(p)) p = ExtractString(v?["severity"]);
+            if (string.IsNullOrWhiteSpace(p)) p = ExtractString(v?["fields"]?["severity"]);
+            return p;
+        }
+        
+        private static PriorityCategory ClassifyPriority(string p)
+        {
+            var s = (p ?? "").Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(s)) return PriorityCategory.Other;
+            // Highest first to avoid "高" being matched by "最高"
+            if (s.Contains("最高") || s.Contains("极高") || s.Contains("p0") || s.Contains("critical") || s.Contains("blocker") || s.Contains("urgent") || s.Contains("very high") || s == "0" || s == "1")
+            {
+                return PriorityCategory.Highest;
+            }
+            if (s.Contains("较高") || s.Contains("高") || s.Contains("p1") || s.Contains("high") || s == "2")
+            {
+                return PriorityCategory.Higher;
+            }
+            return PriorityCategory.Other;
         }
         
         private static JArray GetValuesArray(JObject json)
@@ -276,98 +359,6 @@ namespace PackageManager.Services
             return result;
         }
         
-        public async Task<StoryPointBreakdown> GetUserStoryPointsBreakdownAsync(string iterationOrSprintId, string userId, string userName = null)
-        {
-            var breakdown = new StoryPointBreakdown();
-            if (string.IsNullOrWhiteSpace(iterationOrSprintId) || string.IsNullOrWhiteSpace(userId))
-            {
-                return breakdown;
-            }
-            var baseUrlCandidates = new[]
-            {
-                "https://open.pingcode.com/v1/project/work_items",
-                "https://open.pingcode.com/v1/agile/work_items"
-            };
-            foreach (var baseUrl in baseUrlCandidates)
-            {
-                try
-                {
-                    var pageIndex = 0;
-                    var pageSize = 100;
-                    while (true)
-                    {
-                        var url = $"{baseUrl}?sprint_id={Uri.EscapeDataString(iterationOrSprintId)}&page_size={pageSize}&page_index={pageIndex}";
-                        var json = await GetJsonAsync(url);
-                        var values = GetValuesArray(json);
-                        if (values == null || values.Count == 0)
-                        {
-                            url = $"{baseUrl}?iteration_id={Uri.EscapeDataString(iterationOrSprintId)}&page_size={pageSize}&page_index={pageIndex}";
-                            json = await GetJsonAsync(url);
-                            values = GetValuesArray(json);
-                            if (values == null || values.Count == 0) break;
-                        }
-                        foreach (var v in values)
-                        {
-                            var assignedCandidates = new[]
-                            {
-                                ExtractString(v["assigned_to"]),
-                                ExtractString(v["assignee"]),
-                                ExtractString(v["owner"]),
-                                ExtractString(v["processor"]),
-                                ExtractString(v["fields"]?["assigned_to"]),
-                                ExtractString(v["fields"]?["assignee"]),
-                                ExtractString(v["fields"]?["owner"]),
-                                ExtractString(v["fields"]?["processor"]),
-                                v["assigned_to"]?["id"]?.ToString(),
-                                v["assignee"]?["id"]?.ToString(),
-                                v["owner"]?["id"]?.ToString(),
-                                v["processor"]?["id"]?.ToString(),
-                                v["fields"]?["assigned_to"]?["id"]?.ToString(),
-                                v["fields"]?["assignee"]?["id"]?.ToString(),
-                                v["fields"]?["owner"]?["id"]?.ToString(),
-                                v["fields"]?["processor"]?["id"]?.ToString(),
-                            };
-                            var match = assignedCandidates.Any(c =>
-                            {
-                                var s = (c ?? "").Trim();
-                                if (string.IsNullOrEmpty(s)) return false;
-                                if (string.Equals(s, userId, StringComparison.OrdinalIgnoreCase)) return true;
-                                if (!string.IsNullOrWhiteSpace(userName) && string.Equals(s, userName, StringComparison.OrdinalIgnoreCase)) return true;
-                                return false;
-                            });
-                            if (!match) continue;
-                            double sp = ReadDouble(v["story_points"]);
-                            if (sp == 0) sp = ReadDouble(v["story_point"]);
-                            if (sp == 0) sp = ReadDouble(v["fields"]?["story_points"]);
-                            var status = ReadStatus(v);
-                            var s = (status ?? "").Trim().ToLowerInvariant();
-                            if (s.Contains("done") || s.Contains("完成") || s.Contains("resolved") || s.Contains("closed") || s.Contains("已完成"))
-                            {
-                                breakdown.Done += sp;
-                            }
-                            else if (s.Contains("progress") || s.Contains("进行中") || s.Contains("doing") || s.Contains("开发中") || s.Contains("处理中"))
-                            {
-                                breakdown.InProgress += sp;
-                            }
-                            else
-                            {
-                                breakdown.NotStarted += sp;
-                            }
-                            breakdown.Total += sp;
-                        }
-                        var totalCount = json.Value<int?>("total") ?? 0;
-                        pageIndex++;
-                        if ((pageIndex * pageSize) >= totalCount) break;
-                    }
-                    return breakdown;
-                }
-                catch(Exception exception)
-                {
-                }
-            }
-            return breakdown;
-        }
-        
         public async Task<Dictionary<string, StoryPointBreakdown>> GetIterationStoryPointsBreakdownByAssigneeAsync(string iterationOrSprintId)
         {
             var result = new Dictionary<string, StoryPointBreakdown>(StringComparer.OrdinalIgnoreCase);
@@ -400,30 +391,34 @@ namespace PackageManager.Services
                         }
                         foreach (var v in values)
                         {
-                            var assignedId = v["assigned_to"]?["id"]?.ToString() ??
-                                             v["assignee"]?["id"]?.ToString() ??
-                                             v["owner"]?["id"]?.ToString() ??
-                                             v["processor"]?["id"]?.ToString() ??
-                                             v["fields"]?["assigned_to"]?["id"]?.ToString() ??
-                                             v["fields"]?["assignee"]?["id"]?.ToString() ??
-                                             v["fields"]?["owner"]?["id"]?.ToString() ??
-                                             v["fields"]?["processor"]?["id"]?.ToString() ??
-                                             ExtractString(v["assigned_to"]) ??
-                                             ExtractString(v["assignee"]) ??
-                                             ExtractString(v["owner"]) ??
-                                             ExtractString(v["processor"]) ??
-                                             ExtractString(v["fields"]?["assigned_to"]) ??
-                                             ExtractString(v["fields"]?["assignee"]) ??
-                                             ExtractString(v["fields"]?["owner"]) ??
-                                             ExtractString(v["fields"]?["processor"]);
-                            var assignedName = ExtractString(v["assigned_to_name"]) ??
-                                               ExtractString(v["assignee_name"]) ??
-                                               ExtractString(v["owner_name"]) ??
-                                               ExtractString(v["processor_name"]) ??
-                                               ExtractString(v["fields"]?["assigned_to_name"]) ??
-                                               ExtractString(v["fields"]?["assignee_name"]) ??
-                                               ExtractString(v["fields"]?["owner_name"]) ??
-                                               ExtractString(v["fields"]?["processor_name"]);
+                            var assignedId = FirstNonEmpty(
+                                ExtractId(v["assigned_to"]),
+                                ExtractId(v["assignee"]),
+                                ExtractId(v["owner"]),
+                                ExtractId(v["processor"]),
+                                ExtractId(v["fields"]?["assigned_to"]),
+                                ExtractId(v["fields"]?["assignee"]),
+                                ExtractId(v["fields"]?["owner"]),
+                                ExtractId(v["fields"]?["processor"])
+                            );
+                            var assignedName = FirstNonEmpty(
+                                ExtractString(v["assigned_to_name"]),
+                                ExtractString(v["assignee_name"]),
+                                ExtractString(v["owner_name"]),
+                                ExtractString(v["processor_name"]),
+                                ExtractString(v["fields"]?["assigned_to_name"]),
+                                ExtractString(v["fields"]?["assignee_name"]),
+                                ExtractString(v["fields"]?["owner_name"]),
+                                ExtractString(v["fields"]?["processor_name"]),
+                                ExtractName(v["assigned_to"]),
+                                ExtractName(v["assignee"]),
+                                ExtractName(v["owner"]),
+                                ExtractName(v["processor"]),
+                                ExtractName(v["fields"]?["assigned_to"]),
+                                ExtractName(v["fields"]?["assignee"]),
+                                ExtractName(v["fields"]?["owner"]),
+                                ExtractName(v["fields"]?["processor"])
+                            );
                             var keyId = (assignedId ?? "").Trim().ToLowerInvariant();
                             var keyName = (assignedName ?? "").Trim().ToLowerInvariant();
                             if (string.IsNullOrEmpty(keyId) && string.IsNullOrEmpty(keyName)) continue;
@@ -451,7 +446,8 @@ namespace PackageManager.Services
                             {
                                 bd.Done += sp;
                             }
-                            else if (s.Contains("progress") || s.Contains("进行中") || s.Contains("doing") || s.Contains("开发中") || s.Contains("处理中"))
+                            else if (s.Contains("progress") || s.Contains("进行中") || s.Contains("doing") || s.Contains("开发中") || s.Contains("处理中") ||
+                                     s.Contains("in_progress") || s.Contains("可测试") || s.Contains("测试中"))
                             {
                                 bd.InProgress += sp;
                             }
@@ -460,6 +456,24 @@ namespace PackageManager.Services
                                 bd.NotStarted += sp;
                             }
                             bd.Total += sp;
+                            
+                            var prioText = ReadPriorityText(v);
+                            var cat = ClassifyPriority(prioText);
+                            if (cat == PriorityCategory.Highest)
+                            {
+                                bd.HighestPriorityCount += 1;
+                                bd.HighestPriorityPoints += sp;
+                            }
+                            else if (cat == PriorityCategory.Higher)
+                            {
+                                bd.HigherPriorityCount += 1;
+                                bd.HigherPriorityPoints += sp;
+                            }
+                            else
+                            {
+                                bd.OtherPriorityCount += 1;
+                                bd.OtherPriorityPoints += sp;
+                            }
                         }
                         var totalCount = json.Value<int?>("total") ?? 0;
                         pageIndex++;

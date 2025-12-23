@@ -175,6 +175,12 @@ namespace PackageManager.Views
                                 NotStarted = b.NotStarted,
                                 InProgress = b.InProgress,
                                 Done = b.Done,
+                                HighestPriorityCount = b.HighestPriorityCount,
+                                HighestPriorityPoints = b.HighestPriorityPoints,
+                                HigherPriorityCount = b.HigherPriorityCount,
+                                HigherPriorityPoints = b.HigherPriorityPoints,
+                                OtherPriorityCount = b.OtherPriorityCount,
+                                OtherPriorityPoints = b.OtherPriorityPoints,
                                 Total = b.Total
                             });
                             total+=b.Total;

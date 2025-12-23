@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CustomControlLibrary.CustomControl.Attribute.DataGrid;
@@ -18,8 +18,26 @@ public class MemberStatsItem : INotifyPropertyChanged
             
     [DataGridColumn(4, DisplayName = "已完成", Width = "120", IsReadOnly = true)]
     public double Done { get; set; }
-            
-    [DataGridColumn(5, DisplayName = "总计", Width = "120", IsReadOnly = true)]
+    
+    [DataGridColumn(5, DisplayName = "最高优先级数", Width = "120", IsReadOnly = true)]
+    public int HighestPriorityCount { get; set; }
+    
+    [DataGridColumn(6, DisplayName = "最高优先级故事点", Width = "140", IsReadOnly = true)]
+    public double HighestPriorityPoints { get; set; }
+    
+    [DataGridColumn(7, DisplayName = "较高优先级数", Width = "120", IsReadOnly = true)]
+    public int HigherPriorityCount { get; set; }
+    
+    [DataGridColumn(8, DisplayName = "较高优先级故事点", Width = "140", IsReadOnly = true)]
+    public double HigherPriorityPoints { get; set; }
+    
+    [DataGridColumn(9, DisplayName = "其他优先级数", Width = "120", IsReadOnly = true)]
+    public int OtherPriorityCount { get; set; }
+    
+    [DataGridColumn(10, DisplayName = "其他优先级故事点", Width = "140", IsReadOnly = true)]
+    public double OtherPriorityPoints { get; set; }
+    
+    [DataGridColumn(11, DisplayName = "总计", Width = "120", IsReadOnly = true)]
     public double Total { get; set; }
 
     public event PropertyChangedEventHandler PropertyChanged;
