@@ -32,12 +32,61 @@
     .dot.todo{background:#EF4444}
     .dot.testing{background:#A855F7}
     .dot.testable{background:#3B82F6}
+    .modal-backdrop{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9999}
+    .modal{width:90vw;max-width:1100px;max-height:90vh;background:#fff;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E7EB}
+    .modal-title{font-weight:600;font-size:16px;color:#111827}
+    .modal-close{border:none;background:#F3F4F6;color:#111827;border-radius:6px;padding:6px 10px;cursor:pointer}
+    .modal-body{display:grid;grid-template-columns:2fr 1fr;gap:16px;padding:16px;overflow:auto}
+    .section{border:1px solid #E5E7EB;border-radius:8px;padding:12px;background:#FAFAFA}
+    .section h3{margin:0 0 8px 0;font-size:14px;color:#111827}
+    .kv{display:grid;grid-template-columns:120px 1fr;gap:6px;margin-top:6px;font-size:13px;color:#374151}
+    .tags{display:flex;flex-wrap:wrap;gap:6px}
+    .tag{background:#E5E7EB;color:#374151;border-radius:999px;padding:2px 8px;font-size:12px}
+    .img-wrap img{max-width:100%;border-radius:6px;border:1px solid #E5E7EB}
+    .comment{border-top:1px dashed #E5E7EB;padding-top:8px;margin-top:8px}
+    .comment .meta{font-size:12px;color:#6B7280;margin-bottom:6px}
   </style>
 </head>
 <body>
   <div id="root" class="board"></div>
+  <div id="detailsOverlay" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="detailsTitle"></div>
+        <button class="modal-close" id="detailsClose">返回看板</button>
+      </div>
+      <div class="modal-body">
+        <div class="section">
+          <h3>基本信息</h3>
+          <div class="kv"><div>负责人</div><div id="dAssignee"></div></div>
+          <div class="kv"><div>状态</div><div id="dState"></div></div>
+          <div class="kv"><div>开始时间</div><div id="dStart"></div></div>
+          <div class="kv"><div>结束时间</div><div id="dEnd"></div></div>
+          <div class="kv"><div>优先级</div><div id="dPriority"></div></div>
+          <div class="kv"><div>严重程度</div><div id="dSeverity"></div></div>
+          <div class="kv"><div>故事点</div><div id="dPoints"></div></div>
+          <div class="kv"><div>所属产品</div><div id="dProduct"></div></div>
+          <div class="kv"><div>缺陷类别</div><div id="dDefect"></div></div>
+          <div class="kv"><div>复现版本号</div><div id="dVersion"></div></div>
+          <div class="kv"><div>复现概率</div><div id="dProb"></div></div>
+          <div class="kv"><div>标签</div><div class="tags" id="dTags"></div></div>
+          <div class="kv"><div>描述</div><div id="dDesc"></div></div>
+          <div class="kv"><div>预期结果</div><div id="dExpect"></div></div>
+        </div>
+        <div class="section">
+          <h3>示意图</h3>
+          <div class="img-wrap" id="dSketch"></div>
+          <h3 style="margin-top:12px">评论</h3>
+          <div id="dComments"></div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script>
     const root = document.getElementById('root');
+    const overlay = document.getElementById('detailsOverlay');
+    const closeBtn = document.getElementById('detailsClose');
     const ORDER_DEFAULT = ["未开始","进行中","可测试","测试中","已完成","已关闭"];
     function fmtPoints(n){
       const r = Math.round((Number(n) + Number.EPSILON) * 10) / 10;
@@ -98,6 +147,14 @@
           a.href = href;
           a.target = "_self";
           a.className = `card ${cardClass(cat)}`;
+          if (window.chrome && window.chrome.webview) {
+            a.addEventListener('click', function(ev){
+              try{
+                ev.preventDefault();
+                window.chrome.webview.postMessage({type:'open-details', id: it.id});
+              }catch(e){}
+            });
+          }
           const titleRow = document.createElement('div');
           titleRow.className = 'title';
           const dot = document.createElement('span');
@@ -144,14 +201,82 @@
         if(!data) return;
         if(data.type === 'data'){
           renderBoard(data);
+        }else if(data.type === 'details'){
+          showDetails(data.data || {});
         }else if(typeof data === 'string'){
           const obj = JSON.parse(data);
           if(obj && obj.type === 'data'){
             renderBoard(obj);
+          }else if(obj && obj.type === 'details'){
+            showDetails(obj.data || {});
           }
         }
       }catch(e){}
     }
+    function toDateStr(v){
+      if(!v) return '';
+      try{
+        const dt = new Date(v);
+        if(!isNaN(dt.getTime())){
+          const y = dt.getFullYear();
+          const m = String(dt.getMonth()+1).padStart(2,'0');
+          const d = String(dt.getDate()).padStart(2,'0');
+          const hh = String(dt.getHours()).padStart(2,'0');
+          const mm = String(dt.getMinutes()).padStart(2,'0');
+          return `${y}-${m}-${d} ${hh}:${mm}`;
+        }
+      }catch(e){}
+      return String(v);
+    }
+    function showDetails(d){
+      document.getElementById('detailsTitle').textContent = d.title || d.identifier || d.id || '';
+      document.getElementById('dAssignee').textContent = d.assigneeName || '';
+      document.getElementById('dState').textContent = d.stateName || d.stateType || '';
+      document.getElementById('dStart').textContent = toDateStr(d.startAt || '');
+      document.getElementById('dEnd').textContent = toDateStr(d.endAt || '');
+      document.getElementById('dPriority').textContent = d.priorityName || '';
+      document.getElementById('dSeverity').textContent = d.severityName || '';
+      document.getElementById('dPoints').textContent = fmtPoints(d.storyPoints || 0);
+      document.getElementById('dProduct').textContent = d.productName || '';
+      document.getElementById('dDefect').textContent = d.defectCategory || '';
+      document.getElementById('dVersion').textContent = d.reproduceVersion || '';
+      document.getElementById('dProb').textContent = d.reproduceProbability || '';
+      const tagsEl = document.getElementById('dTags');
+      tagsEl.innerHTML = '';
+      const tags = Array.isArray(d.tags) ? d.tags : [];
+      for(const t of tags){
+        const sp = document.createElement('span');
+        sp.className = 'tag';
+        sp.textContent = t;
+        tagsEl.appendChild(sp);
+      }
+      const sketchEl = document.getElementById('dSketch');
+      sketchEl.innerHTML = d.sketcHtml || d.sketc_html || d.sketchHtml || '';
+      document.getElementById('dDesc').innerHTML = d.descriptionHtml || '';
+      document.getElementById('dExpect').innerHTML = d.expectedResult || '';
+      const cEl = document.getElementById('dComments');
+      cEl.innerHTML = '';
+      const cmts = Array.isArray(d.comments) ? d.comments : [];
+      for(const c of cmts){
+        const div = document.createElement('div');
+        div.className = 'comment';
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = `${c.authorName || ''} · ${toDateStr(c.createdAt || '')}`;
+        const body = document.createElement('div');
+        body.innerHTML = c.contentHtml || '';
+        div.appendChild(meta);
+        div.appendChild(body);
+        cEl.appendChild(div);
+      }
+      overlay.style.display = 'flex';
+    }
+    closeBtn.addEventListener('click', function(){
+      overlay.style.display = 'none';
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape') overlay.style.display = 'none';
+    }, true);
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.addEventListener('message', onMessage);
       window.chrome.webview.postMessage({type:'ready'});

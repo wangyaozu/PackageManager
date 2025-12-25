@@ -1,0 +1,162 @@
+{
+  "id": "666a88d60f62d8f3b65d2479",
+  "url": "https://open.pingcode.com/v1/project/work_items/666a88d60f62d8f3b65d2479",
+  "project": {
+    "id": "66067aa5d26356b420d4243f",
+    "url": "https://open.pingcode.com/v1/project/projects/66067aa5d26356b420d4243f",
+    "name": "建模组项目",
+    "type": "scrum",
+    "identifier": "JD_GROUP",
+    "is_archived": 0,
+    "is_deleted": 0
+  },
+  "identifier": "JD_GROUP-471",
+  "title": "单个配管-需要支持拆分使用的连接件",
+  "type": "story",
+  "start_at": null,
+  "end_at": null,
+  "parent_id": "68b647f452588f7c4123a582",
+  "short_id": "lYHjx7mQ",
+  "html_url": "https://hongwa.pingcode.com/pjm/workitems/lYHjx7mQ",
+  "parent": {
+    "id": "68b647f452588f7c4123a582",
+    "url": "https://open.pingcode.com/v1/project/work_items/68b647f452588f7c4123a582",
+    "identifier": "JD_GROUP-4518",
+    "title": "智能替换管件优化",
+    "type": "feature",
+    "start_at": null,
+    "end_at": null,
+    "parent_id": "68b646d72fabab5277c1dc47",
+    "short_id": "YLDo4hdX",
+    "html_url": "https://hongwa.pingcode.com/pjm/workitems/YLDo4hdX",
+    "properties": {
+      "suoshuchanpin": "66a84059cb4d9e47a98e3da1",
+      "risk": null,
+      "business_value": null,
+      "effort": null,
+      "backlog_type": null,
+      "backlog_from": null,
+      "guihuadian_1": null,
+      "chunjilichengbei": null
+    }
+  },
+  "assignee": {
+    "id": "10e64fe02daa43a0896f68aaf44b32e0",
+    "url": "https://open.pingcode.com/v1/directory/users/10e64fe02daa43a0896f68aaf44b32e0",
+    "name": "18621694620",
+    "display_name": "王耀祖",
+    "avatar": null
+  },
+  "state": {
+    "id": "62b2ef26c5dd33b890b77ccc",
+    "url": "https://open.pingcode.com/v1/project/work_item_states/62b2ef26c5dd33b890b77ccc",
+    "name": "已完成",
+    "type": "completed",
+    "color": "#73D897"
+  },
+  "priority": {
+    "id": "5cb9466afda1ce4ca0090004",
+    "url": "https://open.pingcode.com/v1/project/work_item_priorities/5cb9466afda1ce4ca0090004",
+    "name": "较高"
+  },
+  "board": null,
+  "entry": null,
+  "swimlane": null,
+  "version": {
+    "id": "6928041f162e9379983ecc80",
+    "url": "https://open.pingcode.com/v1/project/projects/66067aa5d26356b420d4243f/versions/6928041f162e9379983ecc80",
+    "name": "MaxiBIM（管道）V2.1.1",
+    "start_at": 1765814400,
+    "end_at": null,
+    "stage": {
+      "id": "62b2ef26c5dd33b890b77dad",
+      "url": "https://open.pingcode.com/v1/project/stages/62b2ef26c5dd33b890b77dad",
+      "name": "进行中",
+      "type": "in_progress",
+      "color": "#F6C659"
+    }
+  },
+  "sprint": {
+    "id": "69297f60fbf473cbfc2cada0",
+    "url": "https://open.pingcode.com/v1/project/projects/66067aa5d26356b420d4243f/sprints/69297f60fbf473cbfc2cada0",
+    "name": "MaxiPMEP_PipeV26SI3",
+    "start_at": 1765814400,
+    "end_at": 1767196799,
+    "status": "in_progress"
+  },
+  "phase": null,
+  "story_points": 0,
+  "estimated_workload": null,
+  "remaining_workload": null,
+  "description": "<h3><span style=\"color: #FF0100;\">界面中将配管方案的配置按钮打开；将管件类型设置去掉。</span></h3><p>沟槽-卡箍和螺纹-双接口管箍和焊接-焊缝和法兰组（法兰+垫片+法兰）的相互替换；</p><p>法兰的判断按照名称中存在HW前缀，为管件类别，判断，找到所有连接的管件，一起替换为其他拆分管件；</p><p>和拆分时出现非标管件的生成逻辑保持一致；</p><p>非标的需要统计到失败列表中。</p>",
+  "completed_at": 1766383297,
+  "properties": {
+    "suoshuchanpin": "66a84059cb4d9e47a98e3da1",
+    "shiyitu": "<img src=\"https://atlas.pingcode.com/files/public/694258a9f117578128292eac\" originUrl=\"https://atlas.pingcode.com/files/public/694258a9f117578128292eac/origin-url\" alt=\"image.png\" size=\"17513\" /><img src=\"https://atlas.pingcode.com/files/public/666a8892c2a27cd3874e85a3\" originUrl=\"https://atlas.pingcode.com/files/public/666a8892c2a27cd3874e85a3/origin-url\" alt=\"image.png\" size=\"47500\" style=\"text-align: center;\" /><p></p>",
+    "risk": null,
+    "backlog_type": null,
+    "backlog_from": null,
+    "entry_status": null,
+    "entry_position": null,
+    "canyuzhe": [
+      "8143b6e62821409981a8435cba42a490"
+    ],
+    "gushidianhuizong": 5.2999999999999989
+  },
+  "tags": [
+    {
+      "id": "66d52bf5099e825040241503",
+      "url": "https://open.pingcode.com/v1/project/work_item_tags/66d52bf5099e825040241503",
+      "name": "MaxiBimPMEP25年春季规划"
+    },
+    {
+      "id": "68b64740dce5feb4efd1da28",
+      "url": "https://open.pingcode.com/v1/project/work_item_tags/68b64740dce5feb4efd1da28",
+      "name": "MaxiBIMPMEP2026年春季规划"
+    }
+  ],
+  "participants": [
+    {
+      "id": "8143b6e62821409981a8435cba42a490",
+      "url": "https://open.pingcode.com/v1/participants/8143b6e62821409981a8435cba42a490?principal_type=work_item&principal_id=666a88d60f62d8f3b65d2479",
+      "type": "user",
+      "user": {
+        "id": "8143b6e62821409981a8435cba42a490",
+        "url": "https://open.pingcode.com/v1/directory/users/8143b6e62821409981a8435cba42a490",
+        "name": "13790871929",
+        "display_name": "林琼燕",
+        "avatar": "https://app-pc-avatar-release-1251945081.cos.ap-shanghai.myqcloud.com/64430871-d2da-4186-8ffa-8f145aa040de_160x160.png"
+      }
+    },
+    {
+      "id": "83a964b50a184168a14c530e863af6f6",
+      "url": "https://open.pingcode.com/v1/participants/83a964b50a184168a14c530e863af6f6?principal_type=work_item&principal_id=666a88d60f62d8f3b65d2479",
+      "type": "user",
+      "user": {
+        "id": "83a964b50a184168a14c530e863af6f6",
+        "url": "https://open.pingcode.com/v1/directory/users/83a964b50a184168a14c530e863af6f6",
+        "name": "13916536526",
+        "display_name": "李维春",
+        "avatar": null
+      }
+    }
+  ],
+  "created_at": 1718257878,
+  "created_by": {
+    "id": "8143b6e62821409981a8435cba42a490",
+    "url": "https://open.pingcode.com/v1/directory/users/8143b6e62821409981a8435cba42a490",
+    "name": "13790871929",
+    "display_name": "林琼燕",
+    "avatar": "https://app-pc-avatar-release-1251945081.cos.ap-shanghai.myqcloud.com/64430871-d2da-4186-8ffa-8f145aa040de_160x160.png"
+  },
+  "updated_at": 1766547624,
+  "updated_by": {
+    "id": "01110010000000000000000000000000",
+    "url": "https://open.pingcode.com/v1/directory/users/01110010000000000000000000000000",
+    "name": "Ping",
+    "display_name": "Ping",
+    "avatar": "https://cdn-aliyun.pingcode.com/static/portal/assets/images/bots/pc-bot.svg"
+  },
+  "is_archived": 0,
+  "is_deleted": 0
+}

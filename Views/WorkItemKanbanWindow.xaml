@@ -9,7 +9,7 @@
         ResizeMode="CanResize"
         WindowState="Maximized">
     <Grid>
-        <!-- <controls:CLoadingOverlay x:Name="Overlay" Message="正在加载看板…" OverlayDarkness="0.25" AccentBrush="DodgerBlue"> -->
+        <controls:CLoadingOverlay x:Name="Overlay" Message="正在加载看板…" OverlayDarkness="0.25" AccentBrush="DodgerBlue">
             <Grid Margin="20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -28,12 +28,7 @@
                     </StackPanel>
                 </StackPanel>
                 
-                <Grid Grid.Row="1">
-                    <wv2:WebView2 x:Name="WebView" />
-                </Grid>
-                
-                <!-- 注释掉 WPF 迭代看板，统一使用 WebView2 渲染真实网页
-                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled" x:Name="ItemsHost" Visibility="Collapsed">
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                     <ItemsControl ItemsSource="{Binding Columns}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -53,64 +48,106 @@
                                             </StackPanel>
                                         </StackPanel>
                                         <ScrollViewer VerticalScrollBarVisibility="Hidden">
-                                            <ItemsControl ItemsSource="{Binding Items}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Padding="10" Margin="10" CornerRadius="10" BorderThickness="1">
-                                                            <Border.Style>
-                                                                <Style TargetType="Border">
-                                                                    <Setter Property="Background" Value="#FFFFFF" />
-                                                                    <Setter Property="BorderBrush" Value="#E5E7EB" />
-                                                                    <Setter Property="Effect">
-                                                                        <Setter.Value>
-                                                                            <DropShadowEffect Color="#33000000" ShadowDepth="2" BlurRadius="6" />
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding StateCategory}" Value="进行中">
-                                                                            <Setter Property="Background" Value="#FFFBEB" />
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding StateCategory}" Value="已完成">
-                                                                            <Setter Property="Background" Value="#ECFDF5" />
-                                                                            <Setter Property="Opacity" Value="0.9" />
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding StateCategory}" Value="已关闭">
-                                                                            <Setter Property="Background" Value="#F3F4F6" />
-                                                                            <Setter Property="Opacity" Value="0.7" />
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Border.Style>
-                                                            <StackPanel>
-                                                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontWeight="Bold" FontSize="13" />
-                                                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                                                    <TextBlock Text="{Binding Type}" Foreground="#6B7280" />
-                                                                    <TextBlock Text=" · " Foreground="#9CA3AF" />
-                                                                    <TextBlock Text="{Binding Priority}" Foreground="#B45309" />
+                                                <ItemsControl ItemsSource="{Binding Items}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Padding="10" Margin="10" CornerRadius="10" BorderThickness="1">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="#FFFFFF" />
+                                                                        <Setter Property="BorderBrush" Value="#E5E7EB" />
+                                                                        <Setter Property="Effect">
+                                                                            <Setter.Value>
+                                                                                <DropShadowEffect Color="#33000000" ShadowDepth="2" BlurRadius="6" />
+                                                                            </Setter.Value>
+                                                                        </Setter>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding StateCategory}" Value="进行中">
+                                                                                <Setter Property="Background" Value="#FFFBEB" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding StateCategory}" Value="已完成">
+                                                                                <Setter Property="Background" Value="#ECFDF5" />
+                                                                                <Setter Property="Opacity" Value="0.9" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding StateCategory}" Value="已关闭">
+                                                                                <Setter Property="Background" Value="#F3F4F6" />
+                                                                                <Setter Property="Opacity" Value="0.7" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="4"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <Rectangle Grid.Column="0">
+                                                                    <Rectangle.Style>
+                                                                        <Style TargetType="Rectangle">
+                                                                            <Setter Property="Fill" Value="#F59E0B" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding StateCategory}" Value="进行中">
+                                                                                    <Setter Property="Fill" Value="#F59E0B" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding StateCategory}" Value="已完成">
+                                                                                    <Setter Property="Fill" Value="#10B981" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding StateCategory}" Value="已关闭">
+                                                                                    <Setter Property="Fill" Value="#9CA3AF" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding StateCategory}" Value="可测试">
+                                                                                    <Setter Property="Fill" Value="#60A5FA" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding StateCategory}" Value="测试中">
+                                                                                    <Setter Property="Fill" Value="#3B82F6" />
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding StateCategory}" Value="未开始">
+                                                                                    <Setter Property="Fill" Value="#D1D5DB" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Rectangle.Style>
+                                                                </Rectangle>
+                                                                <StackPanel Grid.Column="1">
+                                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                        <TextBlock Text="{Binding Identifier}" Foreground="#6B7280" FontWeight="Bold" />
+                                                                        <Image Source="{Binding AssigneeAvatar}" Width="20" Height="20" Margin="8,0,0,0" />
+                                                                    </StackPanel>
+                                                                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontWeight="Bold" FontSize="13" />
+                                                                    <WrapPanel Margin="0,6,0,0">
+                                                                        <Border Background="#FEF3C7" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="10" Padding="6,2" Margin="0,0,6,0">
+                                                                            <TextBlock Text="{Binding Status}" Foreground="#92400E" />
+                                                                        </Border>
+                                                                        <Border Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="10" Padding="6,2">
+                                                                            <TextBlock Text="{Binding Severity}" Foreground="#991B1B" />
+                                                                        </Border>
+                                                                    </WrapPanel>
+                                                                    <WrapPanel Margin="0,6,0,0" VerticalAlignment="Center">
+                                                                        <TextBlock Text="{Binding EndAt, StringFormat={}{0:MM\\月dd\\日}}" Foreground="#6B7280" />
+                                                                        <Border Background="#EEF2FF" BorderBrush="#E0E7FF" BorderThickness="1" CornerRadius="10" Padding="6,2" Margin="6,0,0,0">
+                                                                            <TextBlock Text="{Binding StoryPoints, StringFormat={}{0}}" Foreground="#3730A3" />
+                                                                        </Border>
+                                                                        <Border Background="#E5E7EB" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="10" Padding="6,2" Margin="6,0,0,0">
+                                                                            <TextBlock Text="{Binding CommentCount}" Foreground="#374151" />
+                                                                        </Border>
+                                                                    </WrapPanel>
                                                                 </StackPanel>
-                                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                                    <TextBlock Text="{Binding AssigneeName}" Foreground="#6B7280" />
-                                                                    <TextBlock Text=" · " Foreground="#9CA3AF" />
-                                                                    <TextBlock Text="{Binding StoryPoints, StringFormat=故事点 {0}}" Foreground="#6B7280" />
-                                                                </StackPanel>
-                                                                <TextBlock Text="{Binding Status}" Foreground="#9CA3AF" Margin="0,6,0,0" />
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
+                                                            </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
                                     </DockPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-                -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
                     <button:CButton Content="关闭" Width="100" Click="CloseButton_Click" />
                 </StackPanel>
             </Grid>
-        <!-- </controls:CLoadingOverlay> -->
+        </controls:CLoadingOverlay>
     </Grid>
 </Window>

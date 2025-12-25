@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using PackageManager.Services;
+using Newtonsoft.Json.Linq;
 
 namespace PackageManager.Views
 {
@@ -64,7 +65,6 @@ namespace PackageManager.Views
                     _selectedMember = value;
                     OnPropertyChanged(nameof(SelectedMember));
                     ApplyFilterAndBuildColumns();
-                    UpdateWebView();
                 }
             }
         }
@@ -104,13 +104,12 @@ namespace PackageManager.Views
         {
             try
             {
-                // Overlay.IsBusy = true;
+                Overlay.IsBusy = true;
                 _allItems = await _api.GetIterationWorkItemsAsync(_iterationId);
                 RebuildMembersFromItems();
                 SelectedMember = Members.FirstOrDefault();
                 ApplyFilterAndBuildColumns();
-                await EnsureWebViewAsync();
-                UpdateWebView();
+                
             }
             catch (Exception ex)
             {
@@ -118,7 +117,7 @@ namespace PackageManager.Views
             }
             finally
             {
-                // Overlay.IsBusy = false;
+                Overlay.IsBusy = false;
             }
         }
         
@@ -161,92 +160,7 @@ namespace PackageManager.Views
             }
         }
         
-        private async Task EnsureWebViewAsync()
-        {
-            try
-            {
-                if (WebView.CoreWebView2 == null)
-                {
-                    await WebView.EnsureCoreWebView2Async();
-                    WebView.CoreWebView2.WebMessageReceived += (s, e) =>
-                    {
-                        try
-                        {
-                            var msg = e.WebMessageAsJson;
-                            if (string.IsNullOrWhiteSpace(msg)) return;
-                            if (msg.IndexOf("\"type\":\"ready\"", StringComparison.OrdinalIgnoreCase) >= 0)
-                            {
-                                SendBoardDataToWebView();
-                            }
-                        }
-                        catch
-                        {
-                        }
-                    };
-                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                    var htmlPath = System.IO.Path.Combine(baseDir, "Views", "WorkItemKanban.html");
-                    if (System.IO.File.Exists(htmlPath))
-                    {
-                        var fileUri = new UriBuilder("file", "", -1, htmlPath.Replace('\\', '/')).Uri;
-                        WebView.Source = fileUri;
-                    }
-                }
-            }
-            catch
-            {
-            }
-        }
         
-        private void UpdateWebView()
-        {
-            try
-            {
-                if (WebView.CoreWebView2 == null)
-                {
-                    return;
-                }
-                SendBoardDataToWebView();
-            }
-            catch
-            {
-            }
-        }
-        
-        private void SendBoardDataToWebView()
-        {
-            try
-            {
-                var order = new[] { "未开始", "进行中", "可测试", "测试中", "已完成", "已关闭" };
-                var itemsForWeb = ApplyCurrentFilter(_allItems ?? new List<PingCodeApiService.WorkItemInfo>())?.ToList() ?? new List<PingCodeApiService.WorkItemInfo>();
-                var linkTpl = Environment.GetEnvironmentVariable("PINGCODE_WEB_LINK_TEMPLATE");
-                var payloadObj = new
-                {
-                    type = "data",
-                    order = order,
-                    linkTemplate = string.IsNullOrWhiteSpace(linkTpl) ? "#" : linkTpl,
-                    items = itemsForWeb.Select(i => new
-                    {
-                        id = i.Id,
-                        title = i.Title,
-                        status = i.Status,
-                        category = i.StateCategory,
-                        assigneeName = i.AssigneeName,
-                        storyPoints = i.StoryPoints,
-                        priority = i.Priority,
-                        type = i.Type,
-                        htmlUrl = i.HtmlUrl
-                    }).ToArray()
-                };
-                var payloadJson = Newtonsoft.Json.JsonConvert.SerializeObject(payloadObj);
-                if (WebView.CoreWebView2 != null)
-                {
-                    WebView.CoreWebView2.PostWebMessageAsJson(payloadJson);
-                }
-            }
-            catch
-            {
-            }
-        }
         
         private IEnumerable<PingCodeApiService.WorkItemInfo> ApplyCurrentFilter(IEnumerable<PingCodeApiService.WorkItemInfo> items)
         {
@@ -278,7 +192,6 @@ namespace PackageManager.Views
                     SelectedMember = Members.First(m => string.Equals(m.Id, prev.Id, StringComparison.OrdinalIgnoreCase));
                 }
                 ApplyFilterAndBuildColumns();
-                UpdateWebView();
             }
             catch
             {
@@ -326,5 +239,7 @@ namespace PackageManager.Views
         {
             Close();
         }
+        
+        
     }
 }

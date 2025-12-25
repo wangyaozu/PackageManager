@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Net;
 
@@ -47,15 +48,163 @@ namespace PackageManager.Services
         public class WorkItemInfo
         {
             public string Id { get; set; }
+            public string Identifier { get; set; }
             public string Title { get; set; }
             public string Status { get; set; }
             public string StateCategory { get; set; }
             public string AssigneeId { get; set; }
             public string AssigneeName { get; set; }
+            public string AssigneeAvatar { get; set; }
             public double StoryPoints { get; set; }
             public string Priority { get; set; }
+            public string Severity { get; set; }
             public string Type { get; set; }
             public string HtmlUrl { get; set; }
+            public DateTime? EndAt { get; set; }
+            public int CommentCount { get; set; }
+        }
+        
+        public class WorkItemDetails
+        {
+            public string Id { get; set; }
+            public string Identifier { get; set; }
+            public string Title { get; set; }
+            public string HtmlUrl { get; set; }
+            public string Type { get; set; }
+            public string AssigneeId { get; set; }
+            public string AssigneeName { get; set; }
+            public string StateName { get; set; }
+            public string StateType { get; set; }
+            public string PriorityName { get; set; }
+            public string SeverityName { get; set; }
+            public double StoryPoints { get; set; }
+            public string VersionName { get; set; }
+            public DateTime? StartAt { get; set; }
+            public DateTime? EndAt { get; set; }
+            public DateTime? CompletedAt { get; set; }
+            public string ProductName { get; set; }
+            public string ReproduceVersion { get; set; }
+            public string ReproduceProbability { get; set; }
+            public string DefectCategory { get; set; }
+            public List<string> Tags { get; set; } = new List<string>();
+            public string SketchHtml { get; set; }
+            public string DescriptionHtml { get; set; }
+            public string ExpectedResult { get; set; }
+            public List<WorkItemComment> Comments { get; set; } = new List<WorkItemComment>();
+            public Dictionary<string, string> Properties { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+        
+        public class WorkItemComment
+        {
+            public string AuthorName { get; set; }
+            public string ContentHtml { get; set; }
+            public DateTime? CreatedAt { get; set; }
+        }
+        public class WorkItemDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("project")] public ProjectDto Project { get; set; }
+            [JsonProperty("identifier")] public string Identifier { get; set; }
+            [JsonProperty("title")] public string Title { get; set; }
+            [JsonProperty("type")] public string Type { get; set; }
+            [JsonProperty("start_at")] public long? StartAt { get; set; }
+            [JsonProperty("end_at")] public long? EndAt { get; set; }
+            [JsonProperty("parent_id")] public string ParentId { get; set; }
+            [JsonProperty("short_id")] public string ShortId { get; set; }
+            [JsonProperty("html_url")] public string HtmlUrl { get; set; }
+            [JsonProperty("parent")] public WorkItemDto Parent { get; set; }
+            [JsonProperty("assignee")] public UserDto Assignee { get; set; }
+            [JsonProperty("state")] public StateDto State { get; set; }
+            [JsonProperty("priority")] public PriorityDto Priority { get; set; }
+            [JsonProperty("version")] public VersionDto Version { get; set; }
+            [JsonProperty("sprint")] public SprintDto Sprint { get; set; }
+            [JsonProperty("phase")] public string Phase { get; set; }
+            [JsonProperty("story_points")] public double? StoryPoints { get; set; }
+            [JsonProperty("estimated_workload")] public double? EstimatedWorkload { get; set; }
+            [JsonProperty("remaining_workload")] public double? RemainingWorkload { get; set; }
+            [JsonProperty("description")] public string Description { get; set; }
+            [JsonProperty("completed_at")] public long? CompletedAt { get; set; }
+            [JsonProperty("properties")] public Dictionary<string, object> Properties { get; set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            [JsonProperty("tags")] public List<TagDto> Tags { get; set; } = new List<TagDto>();
+            [JsonProperty("participants")] public List<ParticipantDto> Participants { get; set; } = new List<ParticipantDto>();
+            [JsonProperty("created_at")] public long? CreatedAt { get; set; }
+            [JsonProperty("created_by")] public UserDto CreatedBy { get; set; }
+            [JsonProperty("updated_at")] public long? UpdatedAt { get; set; }
+            [JsonProperty("updated_by")] public UserDto UpdatedBy { get; set; }
+            [JsonProperty("is_archived")] public int? IsArchived { get; set; }
+            [JsonProperty("is_deleted")] public int? IsDeleted { get; set; }
+        }
+        public class ProjectDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+            [JsonProperty("type")] public string Type { get; set; }
+            [JsonProperty("identifier")] public string Identifier { get; set; }
+            [JsonProperty("is_archived")] public int? IsArchived { get; set; }
+            [JsonProperty("is_deleted")] public int? IsDeleted { get; set; }
+        }
+        public class StateDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+            [JsonProperty("type")] public string Type { get; set; }
+            [JsonProperty("color")] public string Color { get; set; }
+        }
+        public class PriorityDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+        }
+        public class VersionDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+            [JsonProperty("start_at")] public long? StartAt { get; set; }
+            [JsonProperty("end_at")] public long? EndAt { get; set; }
+            [JsonProperty("stage")] public StageDto Stage { get; set; }
+        }
+        public class StageDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+            [JsonProperty("type")] public string Type { get; set; }
+            [JsonProperty("color")] public string Color { get; set; }
+        }
+        public class SprintDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+            [JsonProperty("start_at")] public long? StartAt { get; set; }
+            [JsonProperty("end_at")] public long? EndAt { get; set; }
+            [JsonProperty("status")] public string Status { get; set; }
+        }
+        public class TagDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+        }
+        public class ParticipantDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("type")] public string Type { get; set; }
+            [JsonProperty("user")] public UserDto User { get; set; }
+        }
+        public class UserDto
+        {
+            [JsonProperty("id")] public string Id { get; set; }
+            [JsonProperty("url")] public string Url { get; set; }
+            [JsonProperty("name")] public string Name { get; set; }
+            [JsonProperty("display_name")] public string DisplayName { get; set; }
+            [JsonProperty("avatar")] public string Avatar { get; set; }
         }
         
         private static double ReadDouble(JToken t)
@@ -64,6 +213,16 @@ namespace PackageManager.Services
             if (t.Type == JTokenType.Float || t.Type == JTokenType.Integer) return t.Value<double>();
             double d;
             return double.TryParse(t.ToString(), out d) ? d : 0;
+        }
+        
+        private static int ReadInt(object o)
+        {
+            if (o == null) return 0;
+            if (o is int i) return i;
+            if (o is long l) return (int)l;
+            if (o is double d) return (int)d;
+            int r;
+            return int.TryParse(o.ToString(), out r) ? r : 0;
         }
         
         private static string ExtractString(JToken t)
@@ -78,6 +237,13 @@ namespace PackageManager.Services
                 return t.ToString();
             }
             return t.ToString();
+        }
+        
+        private static string DictGet(Dictionary<string, string> dict, string key)
+        {
+            if (dict == null || string.IsNullOrEmpty(key)) return null;
+            string v;
+            return dict.TryGetValue(key, out v) ? v : null;
         }
         
         private static string ExtractId(JToken t)
@@ -158,6 +324,43 @@ namespace PackageManager.Services
             if (string.IsNullOrWhiteSpace(p)) p = ExtractString(v?["severity"]);
             if (string.IsNullOrWhiteSpace(p)) p = ExtractString(v?["fields"]?["severity"]);
             return p;
+        }
+        
+        private static DateTime? ReadDateTimeFromSeconds(JToken t)
+        {
+            if (t == null || t.Type == JTokenType.Null) return null;
+            long secs;
+            if (t.Type == JTokenType.Integer || t.Type == JTokenType.Float)
+            {
+                secs = t.Value<long>();
+            }
+            else
+            {
+                if (!long.TryParse(t.ToString(), out secs)) return null;
+            }
+            try
+            {
+                // PingCode 使用秒为单位的时间戳（UTC）
+                var dt = DateTimeOffset.FromUnixTimeSeconds(secs).UtcDateTime;
+                return dt;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        
+        private static DateTime? FromUnixSeconds(long? secs)
+        {
+            if (!secs.HasValue) return null;
+            try
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(secs.Value).UtcDateTime;
+            }
+            catch
+            {
+                return null;
+            }
         }
         
         private static PriorityCategory ClassifyPriority(string p)
@@ -575,74 +778,163 @@ namespace PackageManager.Services
                             values = GetValuesArray(json);
                             if (values == null || values.Count == 0) break;
                         }
-                        foreach (var v in values)
+                        var dtos = values.ToObject<List<WorkItemDto>>() ?? new List<WorkItemDto>();
+                        foreach (var d in dtos)
                         {
-                            var id = v.Value<string>("id") ?? v.Value<string>("work_item_id");
-                            var title = FirstNonEmpty(
-                                v.Value<string>("title"),
-                                v.Value<string>("name"),
-                                v.Value<string>("summary"),
-                                ExtractString(v["fields"]?["title"]),
-                                ExtractString(v["fields"]?["summary"])
-                            );
-                            var status = ReadStatus(v);
-                            var assigneeId = FirstNonEmpty(
-                                ExtractId(v["assigned_to"]),
-                                ExtractId(v["assignee"]),
-                                ExtractId(v["owner"]),
-                                ExtractId(v["processor"]),
-                                ExtractId(v["fields"]?["assigned_to"]),
-                                ExtractId(v["fields"]?["assignee"]),
-                                ExtractId(v["fields"]?["owner"]),
-                                ExtractId(v["fields"]?["processor"])
-                            );
-                            var assigneeName = FirstNonEmpty(
-                                ExtractString(v["assigned_to_name"]),
-                                ExtractString(v["assignee_name"]),
-                                ExtractString(v["owner_name"]),
-                                ExtractString(v["processor_name"]),
-                                ExtractString(v["fields"]?["assigned_to_name"]),
-                                ExtractString(v["fields"]?["assignee_name"]),
-                                ExtractString(v["fields"]?["owner_name"]),
-                                ExtractString(v["fields"]?["processor_name"]),
-                                ExtractName(v["assigned_to"]),
-                                ExtractName(v["assignee"]),
-                                ExtractName(v["owner"]),
-                                ExtractName(v["processor"]),
-                                ExtractName(v["fields"]?["assigned_to"]),
-                                ExtractName(v["fields"]?["assignee"]),
-                                ExtractName(v["fields"]?["owner"]),
-                                ExtractName(v["fields"]?["processor"])
-                            );
-                            var prio = ReadPriorityText(v);
-                            double sp = ReadDouble(v["story_points"]);
-                            if (sp == 0) sp = ReadDouble(v["story_point"]);
-                            if (sp == 0) sp = ReadDouble(v["fields"]?["story_points"]);
-                            var type = FirstNonEmpty(
-                                ExtractString(v["type"]),
-                                ExtractString(v["work_item_type"]),
-                                ExtractString(v["fields"]?["type"]),
-                                ExtractString(v["fields"]?["work_item_type"])
-                            );
-                            var htmlUrl = ReadHtmlUrl(v);
+                            var status = d.State?.Name;
+                            var assigneeId = d.Assignee?.Id;
+                            var assigneeName = !string.IsNullOrWhiteSpace(d.Assignee?.DisplayName) ? d.Assignee.DisplayName : d.Assignee?.Name;
+                            var assigneeAvatar = d.Assignee?.Avatar;
+                            var prio = d.Priority?.Name;
+                            var sp = d.StoryPoints ?? 0;
+                            var severity = "";
+                            object sv;
+                            if (d.Properties != null)
+                            {
+                                if (d.Properties.TryGetValue("severity", out sv) && sv != null) severity = sv.ToString();
+                                else if (d.Properties.TryGetValue("严重程度", out sv) && sv != null) severity = sv.ToString();
+                                else if (d.Properties.TryGetValue("严重", out sv) && sv != null) severity = sv.ToString();
+                            }
+                            var endAt = FromUnixSeconds(d.EndAt);
+                            var commentCount = 0;
+                            object cc;
+                            if (d.Properties != null)
+                            {
+                                if (d.Properties.TryGetValue("comment_count", out cc) && cc != null) commentCount = ReadInt(cc);
+                                else if (d.Properties.TryGetValue("comments_count", out cc) && cc != null) commentCount = ReadInt(cc);
+                                else if (d.Properties.TryGetValue("评论数", out cc) && cc != null) commentCount = ReadInt(cc);
+                            }
+                            var type = d.Type;
+                            var htmlUrl = d.HtmlUrl;
                             var wi = new WorkItemInfo
                             {
-                                Id = id,
-                                Title = title ?? id,
+                                Id = d.Id ?? d.ShortId,
+                                Identifier = d.Identifier ?? d.ShortId ?? d.Id,
+                                Title = d.Title ?? d.Identifier ?? d.Id,
                                 Status = status,
                                 StateCategory = CategorizeState(status),
                                 AssigneeId = assigneeId,
                                 AssigneeName = assigneeName,
+                                AssigneeAvatar = assigneeAvatar,
                                 StoryPoints = sp,
                                 Priority = prio,
+                                Severity = severity,
                                 Type = type,
-                                HtmlUrl = htmlUrl
+                                HtmlUrl = htmlUrl,
+                                EndAt = endAt,
+                                CommentCount = commentCount
                             };
                             result.Add(wi);
                         }
                         var totalCount = json.Value<int?>("total") ?? 0;
                         pageIndex++;
                         if ((pageIndex * pageSize) >= totalCount) break;
+                    }
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                }
+            }
+            return result;
+        }
+        
+        public async Task<WorkItemDetails> GetWorkItemDetailsAsync(string workItemId)
+        {
+            if (string.IsNullOrWhiteSpace(workItemId)) return null;
+            var candidates = new[]
+            {
+                $"https://open.pingcode.com/v1/project/work_items/{Uri.EscapeDataString(workItemId)}",
+                $"https://open.pingcode.com/v1/agile/work_items/{Uri.EscapeDataString(workItemId)}",
+            };
+            foreach (var url in candidates)
+            {
+                try
+                {
+                    var json = await GetJsonAsync(url);
+                    if (json == null) continue;
+                    var dto = json.ToObject<WorkItemDto>();
+                    if (dto == null) continue;
+                    var d = new WorkItemDetails();
+                    d.Id = dto.Id ?? workItemId;
+                    d.Identifier = dto.Identifier;
+                    d.Title = dto.Title ?? dto.Identifier ?? dto.Id;
+                    d.HtmlUrl = dto.HtmlUrl;
+                    d.Type = dto.Type;
+                    d.AssigneeId = dto.Assignee?.Id;
+                    d.AssigneeName = !string.IsNullOrWhiteSpace(dto.Assignee?.DisplayName) ? dto.Assignee.DisplayName : dto.Assignee?.Name;
+                    d.StateName = dto.State?.Name;
+                    d.StateType = dto.State?.Type;
+                    d.PriorityName = dto.Priority?.Name;
+                    d.SeverityName = null;
+                    d.StoryPoints = dto.StoryPoints ?? 0;
+                    if (d.StoryPoints == 0 && dto.Properties != null && dto.Properties.TryGetValue("gushidianhuizong", out var g))
+                    {
+                        if (g is double gd) d.StoryPoints = gd;
+                        else if (g != null)
+                        {
+                            double gg;
+                            if (double.TryParse(g.ToString(), out gg)) d.StoryPoints = gg;
+                        }
+                    }
+                    d.VersionName = dto.Version?.Name;
+                    d.StartAt = ReadDateTimeFromSeconds(dto.StartAt);
+                    d.EndAt = ReadDateTimeFromSeconds(dto.EndAt);
+                    d.CompletedAt = ReadDateTimeFromSeconds(dto.CompletedAt);
+                    d.ProductName = null;
+                    d.Properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kv in dto.Properties ?? new Dictionary<string, object>())
+                    {
+                        d.Properties[kv.Key] = kv.Value?.ToString();
+                    }
+                    d.ReproduceVersion = DictGet(d.Properties, "复现版本号");
+                    d.ReproduceProbability = DictGet(d.Properties, "复现概率");
+                    d.DefectCategory = DictGet(d.Properties, "缺陷类别");
+                    d.ExpectedResult = DictGet(d.Properties, "预期结果");
+                    d.SketchHtml = DictGet(d.Properties, "示意图") ?? DictGet(d.Properties, "shiyitu");
+                    d.DescriptionHtml = dto.Description;
+                    d.Tags = (dto.Tags ?? new List<TagDto>()).Select(t => t?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+                    d.Comments = await GetWorkItemCommentsAsync(d.Id) ?? new List<WorkItemComment>();
+                    return d;
+                }
+                catch
+                {
+                }
+            }
+            return null;
+        }
+        
+        public async Task<List<WorkItemComment>> GetWorkItemCommentsAsync(string workItemId)
+        {
+            var result = new List<WorkItemComment>();
+            if (string.IsNullOrWhiteSpace(workItemId)) return result;
+            var candidates = new[]
+            {
+                $"https://open.pingcode.com/v1/project/work_items/{Uri.EscapeDataString(workItemId)}/comments",
+                $"https://open.pingcode.com/v1/agile/work_items/{Uri.EscapeDataString(workItemId)}/comments",
+                $"https://open.pingcode.com/v1/project/work_items/{Uri.EscapeDataString(workItemId)}/activities"
+            };
+            foreach (var url in candidates)
+            {
+                try
+                {
+                    var json = await GetJsonAsync(url);
+                    var values = GetValuesArray(json);
+                    if (values == null || values.Count == 0) continue;
+                    foreach (var v in values)
+                    {
+                        var content = FirstNonEmpty(ExtractString(v["content"]), ExtractString(v["body"]), ExtractString(v["text"]), ExtractString(v["html"]));
+                        var authorName = FirstNonEmpty(ExtractString(v["author_name"]), ExtractName(v["author"]), ExtractName(v["user"]), ExtractString(v["created_by_name"]));
+                        var createdAt = ReadDateTimeFromSeconds(v["created_at"]) ?? ReadDateTimeFromSeconds(v["timestamp"]);
+                        if (!string.IsNullOrWhiteSpace(content))
+                        {
+                            result.Add(new WorkItemComment
+                            {
+                                AuthorName = authorName,
+                                ContentHtml = content,
+                                CreatedAt = createdAt
+                            });
+                        }
                     }
                     return result;
                 }
