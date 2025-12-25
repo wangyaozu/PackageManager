@@ -89,12 +89,14 @@
         const cards = document.createElement('div');
         cards.className = 'cards';
         for(const it of list){
-          const href = (payload.linkTemplate && payload.linkTemplate!=="#")
-            ? payload.linkTemplate.replace("{id}", it.id||"")
-            : "#";
+          const href = (it.htmlUrl && it.htmlUrl.trim())
+            ? it.htmlUrl
+            : ((payload.linkTemplate && payload.linkTemplate!=="#")
+              ? payload.linkTemplate.replace("{id}", it.id||"")
+              : "#");
           const a = document.createElement('a');
           a.href = href;
-          a.target = "_blank";
+          a.target = "_self";
           a.className = `card ${cardClass(cat)}`;
           const titleRow = document.createElement('div');
           titleRow.className = 'title';

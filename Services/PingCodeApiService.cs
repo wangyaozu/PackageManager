@@ -55,6 +55,7 @@ namespace PackageManager.Services
             public double StoryPoints { get; set; }
             public string Priority { get; set; }
             public string Type { get; set; }
+            public string HtmlUrl { get; set; }
         }
         
         private static double ReadDouble(JToken t)
@@ -130,6 +131,17 @@ namespace PackageManager.Services
             if (string.IsNullOrWhiteSpace(s)) s = ExtractString(v["fields"]?["status"]);
             if (string.IsNullOrWhiteSpace(s)) s = ExtractString(v["fields"]?["state"]);
             return s;
+        }
+        
+        private static string ReadHtmlUrl(JToken v)
+        {
+            return FirstNonEmpty(
+                ExtractString(v?["html_url"]),
+                ExtractString(v?["web_url"]),
+                ExtractString(v?["url"]),
+                ExtractString(v?["fields"]?["html_url"]),
+                ExtractString(v?["links"]?["html_url"])
+            );
         }
         
         private enum PriorityCategory
@@ -612,6 +624,7 @@ namespace PackageManager.Services
                                 ExtractString(v["fields"]?["type"]),
                                 ExtractString(v["fields"]?["work_item_type"])
                             );
+                            var htmlUrl = ReadHtmlUrl(v);
                             var wi = new WorkItemInfo
                             {
                                 Id = id,
@@ -622,7 +635,8 @@ namespace PackageManager.Services
                                 AssigneeName = assigneeName,
                                 StoryPoints = sp,
                                 Priority = prio,
-                                Type = type
+                                Type = type,
+                                HtmlUrl = htmlUrl
                             };
                             result.Add(wi);
                         }

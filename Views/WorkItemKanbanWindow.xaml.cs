@@ -233,7 +233,8 @@ namespace PackageManager.Views
                         assigneeName = i.AssigneeName,
                         storyPoints = i.StoryPoints,
                         priority = i.Priority,
-                        type = i.Type
+                        type = i.Type,
+                        htmlUrl = i.HtmlUrl
                     }).ToArray()
                 };
                 var payloadJson = Newtonsoft.Json.JsonConvert.SerializeObject(payloadObj);
