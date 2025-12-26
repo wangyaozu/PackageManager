@@ -7,10 +7,12 @@
         Title="迭代看板" Height="700" Width="1080"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
-        WindowState="Maximized">
+        WindowState="Maximized"
+        AllowDrop="True">
     <Grid>
         <controls:CLoadingOverlay x:Name="Overlay" Message="正在加载看板…" OverlayDarkness="0.25" AccentBrush="DodgerBlue">
-            <Grid Margin="20">
+            <AdornerDecorator>
+                <Grid Margin="20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -37,7 +39,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="10" Margin="0,0,16,0" MinWidth="240">
+                                <Border BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="10" Margin="0,0,16,0" MinWidth="240" AllowDrop="True" Drop="Column_Drop">
                                     <DockPanel>
                                         <StackPanel DockPanel.Dock="Top" Background="#F9FAFB" >
                                             <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Bold" />
@@ -51,7 +53,7 @@
                                                 <ItemsControl ItemsSource="{Binding Items}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border Padding="10" Margin="10" CornerRadius="10" BorderThickness="1">
+                                                            <Border Padding="10" Margin="10" CornerRadius="10" BorderThickness="1" PreviewMouseLeftButtonDown="Item_PreviewMouseLeftButtonDown" MouseMove="Item_MouseMove">
                                                                 <Border.Style>
                                                                     <Style TargetType="Border">
                                                                         <Setter Property="Background" Value="#FFFFFF" />
@@ -147,7 +149,8 @@
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
                     <button:CButton Content="关闭" Width="100" Click="CloseButton_Click" />
                 </StackPanel>
-            </Grid>
+                </Grid>
+            </AdornerDecorator>
         </controls:CLoadingOverlay>
     </Grid>
 </Window>

@@ -48,6 +48,8 @@ namespace PackageManager.Services
         public class WorkItemInfo
         {
             public string Id { get; set; }
+            public string StateId { get; set; }
+            public string ProjectId { get; set; }
             public string Identifier { get; set; }
             public string Title { get; set; }
             public string Status { get; set; }
@@ -205,6 +207,12 @@ namespace PackageManager.Services
             [JsonProperty("name")] public string Name { get; set; }
             [JsonProperty("display_name")] public string DisplayName { get; set; }
             [JsonProperty("avatar")] public string Avatar { get; set; }
+        }
+        public class StatePlanInfo
+        {
+            public string Id { get; set; }
+            public string WorkItemType { get; set; }
+            public string ProjectType { get; set; }
         }
         
         private static double ReadDouble(JToken t)
@@ -411,6 +419,17 @@ namespace PackageManager.Services
             return "未开始";
         }
         
+        private static string MapCategoryToStateType(string category)
+        {
+            var c = (category ?? "").Trim();
+            if (string.Equals(c, "进行中", StringComparison.OrdinalIgnoreCase)) return "in_progress";
+            if (string.Equals(c, "可测试", StringComparison.OrdinalIgnoreCase)) return "testable";
+            if (string.Equals(c, "测试中", StringComparison.OrdinalIgnoreCase)) return "testing";
+            if (string.Equals(c, "已完成", StringComparison.OrdinalIgnoreCase)) return "done";
+            if (string.Equals(c, "已关闭", StringComparison.OrdinalIgnoreCase)) return "closed";
+            return "todo";
+        }
+        
         private static JArray GetValuesArray(JObject json)
         {
             if (json == null) return null;
@@ -511,6 +530,40 @@ namespace PackageManager.Services
                 throw new InvalidOperationException($"GET 失败: {(int)resp.StatusCode} {resp.StatusCode} {txt}");
             }
             return JObject.Parse(txt);
+        }
+        
+        private async Task<JObject> PatchJsonAsync(string url, JObject body)
+        {
+            await EnsureTokenAsync();
+            var req = new HttpRequestMessage(new HttpMethod("PATCH"), url);
+            var payload = body ?? new JObject();
+            req.Content = new StringContent(payload.ToString(Formatting.None), Encoding.UTF8, "application/json");
+            using var resp = await _http.SendAsync(req);
+            var txt = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                if (resp.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    throw new ApiAuthException($"PATCH 失败: {(int)resp.StatusCode} {resp.StatusCode} {txt}");
+                }
+                if (resp.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    throw new ApiForbiddenException($"PATCH 失败: {(int)resp.StatusCode} {resp.StatusCode} {txt}");
+                }
+                if (resp.StatusCode == HttpStatusCode.NotFound)
+                {
+                    throw new ApiNotFoundException($"PATCH 失败: {(int)resp.StatusCode} {resp.StatusCode} {txt}");
+                }
+                throw new InvalidOperationException($"PATCH 失败: {(int)resp.StatusCode} {resp.StatusCode} {txt}");
+            }
+            try
+            {
+                return string.IsNullOrWhiteSpace(txt) ? new JObject() : JObject.Parse(txt);
+            }
+            catch
+            {
+                return new JObject();
+            }
         }
         
         private static List<Entity> ParseEntities(JObject jobj)
@@ -782,6 +835,7 @@ namespace PackageManager.Services
                         foreach (var d in dtos)
                         {
                             var status = d.State?.Name;
+                            var stateId = d.State?.Id;
                             var assigneeId = d.Assignee?.Id;
                             var assigneeName = !string.IsNullOrWhiteSpace(d.Assignee?.DisplayName) ? d.Assignee.DisplayName : d.Assignee?.Name;
                             var assigneeAvatar = d.Assignee?.Avatar;
@@ -809,6 +863,8 @@ namespace PackageManager.Services
                             var wi = new WorkItemInfo
                             {
                                 Id = d.Id ?? d.ShortId,
+                                StateId = stateId,
+                                ProjectId = d.Project?.Id,
                                 Identifier = d.Identifier ?? d.ShortId ?? d.Id,
                                 Title = d.Title ?? d.Identifier ?? d.Id,
                                 Status = status,
@@ -937,6 +993,202 @@ namespace PackageManager.Services
                         }
                     }
                     return result;
+                }
+                catch
+                {
+                }
+            }
+            return result;
+        }
+        
+        public async Task<bool> UpdateWorkItemStateByIdAsync(string workItemId, string stateId)
+        {
+            if (string.IsNullOrWhiteSpace(workItemId) || string.IsNullOrWhiteSpace(stateId)) return false;
+            var urls = new[]
+            {
+                $"https://open.pingcode.com/v1/project/work_items/{Uri.EscapeDataString(workItemId)}",
+                $"https://open.pingcode.com/v1/agile/work_items/{Uri.EscapeDataString(workItemId)}"
+            };
+            var bodies = new[]
+            {
+                // new JObject { ["state"] = new JObject { ["id"] = stateId } },
+                new JObject { ["state_id"] = stateId }
+            };
+            foreach (var url in urls)
+            {
+                foreach (var body in bodies)
+                {
+                    try
+                    {
+                        var resp = await PatchJsonAsync(url, body);
+                        if (resp != null) return true;
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            return false;
+        }
+        
+        public async Task<List<StateDto>> GetWorkItemStatesByTypeAsync(string projectId, string workItemTypeIdOrName)
+        {
+            var result = new List<StateDto>();
+            if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workItemTypeIdOrName)) return result;
+            var endpoints = new[]
+            {
+                "https://open.pingcode.com/v1/project/work_item_states",
+                "https://open.pingcode.com/v1/project/work_item/states",
+                "https://open.pingcode.com/v1/project/work_items/states"
+            };
+            var paramKeys = new[] { "work_item_type_id", "work_item_type", "type_id", "type" };
+            foreach (var ep in endpoints)
+            {
+                foreach (var key in paramKeys)
+                {
+                    var url = $"{ep}?project_id={Uri.EscapeDataString(projectId)}&{key}={Uri.EscapeDataString(workItemTypeIdOrName)}&page_size=100";
+                    try
+                    {
+                        var json = await GetJsonAsync(url);
+                        var values = GetValuesArray(json);
+                        if (values == null || values.Count == 0) continue;
+                        var list = values.ToObject<List<StateDto>>() ?? new List<StateDto>();
+                        if (list.Count > 0) return list;
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            return result;
+        }
+        
+        public async Task<List<StateDto>> GetWorkItemStateTransitionsAsync(string projectId, string workItemTypeIdOrName, string fromStateId)
+        {
+            var result = new List<StateDto>();
+            if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workItemTypeIdOrName) || string.IsNullOrWhiteSpace(fromStateId)) return result;
+            var endpoints = new[]
+            {
+                "https://open.pingcode.com/v1/project/work_item_state_transitions",
+                "https://open.pingcode.com/v1/project/work_item/states/transitions",
+                "https://open.pingcode.com/v1/project/work_item_states/transitions",
+                "https://open.pingcode.com/v1/project/work_items/state_transitions"
+            };
+            var paramKeys = new[] { "work_item_type_id", "work_item_type", "type_id", "type" };
+            foreach (var ep in endpoints)
+            {
+                foreach (var key in paramKeys)
+                {
+                    var url = $"{ep}?project_id={Uri.EscapeDataString(projectId)}&{key}={Uri.EscapeDataString(workItemTypeIdOrName)}&from_state_id={Uri.EscapeDataString(fromStateId)}&page_size=100";
+                    try
+                    {
+                        var json = await GetJsonAsync(url);
+                        var values = GetValuesArray(json);
+                        if (values == null || values.Count == 0) continue;
+                        foreach (var v in values)
+                        {
+                            var toObj = v["to"] ?? v["target"] ?? v["state"] ?? v;
+                            if (toObj != null)
+                            {
+                                try
+                                {
+                                    var dto = toObj.ToObject<StateDto>();
+                                    if (dto != null && !string.IsNullOrWhiteSpace(dto.Id))
+                                    {
+                                        result.Add(dto);
+                                    }
+                                }
+                                catch
+                                {
+                                }
+                            }
+                        }
+                        if (result.Count > 0) return result;
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            return result;
+        }
+        
+        public async Task<List<StatePlanInfo>> GetWorkItemStatePlansAsync(string projectId)
+        {
+            var result = new List<StatePlanInfo>();
+            if (string.IsNullOrWhiteSpace(projectId)) return result;
+            var endpoints = new[]
+            {
+                "https://open.pingcode.com/v1/project/work_item_state_plans",
+                "https://open.pingcode.com/v1/project/work_item/state_plans",
+                "https://open.pingcode.com/v1/project/work_items/state_plans"
+            };
+            foreach (var ep in endpoints)
+            {
+                var url = $"{ep}?project_id={Uri.EscapeDataString(projectId)}&page_size=100";
+                try
+                {
+                    var json = await GetJsonAsync(url);
+                    var values = GetValuesArray(json);
+                    if (values == null || values.Count == 0) continue;
+                    foreach (var v in values)
+                    {
+                        var id = v.Value<string>("id");
+                        var wtype = v.Value<string>("work_item_type") ?? v["work_item"]?.Value<string>("type");
+                        var ptype = v.Value<string>("project_type") ?? v["project"]?.Value<string>("type");
+                        if (!string.IsNullOrWhiteSpace(id))
+                        {
+                            result.Add(new StatePlanInfo { Id = id, WorkItemType = wtype, ProjectType = ptype });
+                        }
+                    }
+                    if (result.Count > 0) return result;
+                }
+                catch
+                {
+                }
+            }
+            return result;
+        }
+        
+        public async Task<List<StateDto>> GetWorkItemStateFlowsAsync(string statePlanId, string fromStateId)
+        {
+            var result = new List<StateDto>();
+            if (string.IsNullOrWhiteSpace(statePlanId)) return result;
+            var endpoints = new[]
+            {
+                $"https://open.pingcode.com/v1/project/work_item_state_plans/{Uri.EscapeDataString(statePlanId)}/work_item_state_flows",
+                $"https://open.pingcode.com/v1/project/work_item/state_plans/{Uri.EscapeDataString(statePlanId)}/work_item_state_flows",
+                $"https://open.pingcode.com/v1/project/work_items/state_plans/{Uri.EscapeDataString(statePlanId)}/work_item_state_flows"
+            };
+            foreach (var ep in endpoints)
+            {
+                var url = string.IsNullOrWhiteSpace(fromStateId)
+                    ? $"{ep}?page_size=100"
+                    : $"{ep}?from_state_id={Uri.EscapeDataString(fromStateId)}&page_size=100";
+                try
+                {
+                    var json = await GetJsonAsync(url);
+                    var values = GetValuesArray(json);
+                    if (values == null || values.Count == 0) continue;
+                    foreach (var v in values)
+                    {
+                        var toObj = v["to_state"] ?? v["to"] ?? v["target"] ?? v["state"];
+                        if (toObj != null)
+                        {
+                            try
+                            {
+                                var dto = toObj.ToObject<StateDto>();
+                                if (dto != null && !string.IsNullOrWhiteSpace(dto.Id))
+                                {
+                                    result.Add(dto);
+                                }
+                            }
+                            catch
+                            {
+                            }
+                        }
+                    }
+                    if (result.Count > 0) return result;
                 }
                 catch
                 {

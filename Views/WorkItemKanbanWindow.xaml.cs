@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Threading;
 using PackageManager.Services;
 using Newtonsoft.Json.Linq;
+using System.Windows.Input;
 
 namespace PackageManager.Views
 {
@@ -38,6 +39,13 @@ namespace PackageManager.Views
             OnPropertyChanged(nameof(Count));
             OnPropertyChanged(nameof(TotalPoints));
         }
+
+        public void UpdateCountAndTotalPoints()
+        {
+            OnPropertyChanged(nameof(Count));
+            OnPropertyChanged(nameof(TotalPoints));
+        }
+        
         public int Count => _items?.Count ?? 0;
         public double TotalPoints => _items?.Sum(i => i?.StoryPoints ?? 0) ?? 0;
         public event PropertyChangedEventHandler PropertyChanged;
@@ -94,11 +102,14 @@ namespace PackageManager.Views
             WindowState = WindowState.Maximized;
             DataContext = this;
             Loaded += async (s, e) => await LoadWorkItemsAsync();
-            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
             _refreshTimer.Tick += async (s, e) => await RefreshWorkItemsAsync();
             _refreshTimer.Start();
             Closed += (s, e) => _refreshTimer.Stop();
         }
+        
+        private Point _dragStart;
+        private bool _dragInit;
         
         private async Task LoadWorkItemsAsync()
         {
@@ -240,6 +251,115 @@ namespace PackageManager.Views
             Close();
         }
         
+        private void Item_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStart = e.GetPosition(null);
+            _dragInit = true;
+        }
         
+        private void Item_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || !_dragInit) return;
+            var pos = e.GetPosition(null);
+            if (Math.Abs(pos.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(pos.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+            var fe = sender as FrameworkElement;
+            var item = fe?.DataContext as PingCodeApiService.WorkItemInfo;
+            if (item == null) return;
+            _dragInit = false;
+            DragDrop.DoDragDrop(fe, new DataObject(typeof(PingCodeApiService.WorkItemInfo), item), DragDropEffects.Move);
+        }
+        
+        private void Column_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(PingCodeApiService.WorkItemInfo)))
+            {
+                e.Effects = DragDropEffects.Move;
+                e.Handled = true;
+            }
+        }
+        
+        private static string MapCategoryToStateTypeForPatch(string category)
+        {
+            var c = (category ?? "").Trim();
+            if (string.Equals(c, "进行中", StringComparison.OrdinalIgnoreCase)) return "in_progress";
+            if (string.Equals(c, "可测试", StringComparison.OrdinalIgnoreCase)) return "in_progress";
+            if (string.Equals(c, "测试中", StringComparison.OrdinalIgnoreCase)) return "in_progress";
+            if (string.Equals(c, "已完成", StringComparison.OrdinalIgnoreCase)) return "done";
+            if (string.Equals(c, "已关闭", StringComparison.OrdinalIgnoreCase)) return "closed";
+            return "pending";
+        }
+        
+        private async void Column_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(PingCodeApiService.WorkItemInfo))) return;
+            var item = e.Data.GetData(typeof(PingCodeApiService.WorkItemInfo)) as PingCodeApiService.WorkItemInfo;
+            var dest = (sender as FrameworkElement)?.DataContext as KanbanColumn;
+            if (item == null || dest == null) return;
+            var current = item.StateCategory ?? "";
+            var target = dest.Title ?? "";
+            if (string.Equals(current, target, StringComparison.OrdinalIgnoreCase)) return;
+            var src = Columns.FirstOrDefault(c => c.Items.Contains(item));
+            if (src == null) return;
+            try
+            {
+                Overlay.IsBusy = true;
+                var targetStateId = await ResolveTargetStateIdAsync(item, target);
+                var ok = false;
+                if (targetStateId != null && !string.IsNullOrWhiteSpace(targetStateId.Value.Item1))
+                {
+                    ok = await _api.UpdateWorkItemStateByIdAsync(item.Id, targetStateId.Value.Item1);
+                }
+                
+                if (ok)
+                {
+                    src.Items.Remove(item);
+                    dest.Items.Add(item);
+                    item.StateCategory = target;
+                    item.Status = targetStateId.Value.Item2;
+                    if (!string.IsNullOrWhiteSpace(targetStateId.Value.Item1))
+                    {
+                        item.StateId = targetStateId.Value.Item1;
+                    }
+
+                    src.UpdateCountAndTotalPoints();
+                    dest.UpdateCountAndTotalPoints();
+                }
+                else
+                {
+                    MessageBox.Show("更新状态失败：未找到符合状态方案与流转规则的目标状态", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("更新状态异常：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Overlay.IsBusy = false;
+            }
+        }
+        
+        private async Task<(string, string)?> ResolveTargetStateIdAsync(PingCodeApiService.WorkItemInfo item, string targetCategory)
+        {
+            if (item == null || string.IsNullOrWhiteSpace(targetCategory)) return null;
+            var type = (item.Type ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(type)) return null;
+            var projectId = (item.ProjectId ?? "").Trim();
+           
+            var targetType = MapCategoryToStateTypeForPatch(targetCategory);
+            var plans = await _api.GetWorkItemStatePlansAsync(projectId);
+            var plan = plans.FirstOrDefault(p => string.Equals((p?.WorkItemType ?? "").Trim(), type, StringComparison.OrdinalIgnoreCase));
+            if (plan == null || string.IsNullOrWhiteSpace(plan.Id)) return null;
+            var flows = await _api.GetWorkItemStateFlowsAsync(plan.Id, item.StateId);
+            PingCodeApiService.StateDto firstOrDefault = flows.FirstOrDefault(s => string.Equals(s?.Type ?? "", targetType, StringComparison.OrdinalIgnoreCase));
+            if (firstOrDefault == null || string.IsNullOrWhiteSpace(firstOrDefault.Id)) return null;
+            
+            var candidate = firstOrDefault?.Id;
+            return (candidate, firstOrDefault.Name);
+        }
     }
 }
