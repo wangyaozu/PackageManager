@@ -3,7 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:conv="clr-namespace:PackageManager.Converters"
              mc:Ignorable="d" d:DesignHeight="160" d:DesignWidth="320">
+    <UserControl.Resources>
+        <conv:TypeIsDefectToVisibilityConverter x:Key="TypeIsDefectVis" />
+        <conv:SeverityTextConverter x:Key="SeverityTextConverter" />
+        <conv:SeverityColorConverter x:Key="SeverityColorConverter" />
+    </UserControl.Resources>
     <Border Padding="14" Margin="12" CornerRadius="12" BorderThickness="1" HorizontalAlignment="Stretch" BorderBrush="#E5E7EB" Background="#FFFFFF" Opacity="0">
         <Border.Style>
             <Style TargetType="Border">
@@ -123,20 +129,63 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Border Background="#E0F2FE" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="999" Padding="8,2" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding Status}" Foreground="#1D4ED8" />
                     </Border>
-                    <Border Grid.Column="1" Background="#E5E7EB" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="999" Padding="8,2" Margin="8,0,0,0" HorizontalAlignment="Right">
+                    <Border Grid.Column="1" Background="#F3F4F6" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="999" Padding="8,2" Margin="8,0,0,0"
+                            Visibility="{Binding Type, Converter={StaticResource TypeIsDefectVis}}">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Severity}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Severity.Length}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,6,0" Fill="{Binding Severity, Converter={StaticResource SeverityColorConverter}}" />
+                            <TextBlock Text="{Binding Severity, Converter={StaticResource SeverityTextConverter}}" Foreground="#374151" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Background="#E5E7EB" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="999" Padding="8,2" Margin="8,0,0,0" HorizontalAlignment="Right">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Setter Property="Background" Value="#E5E7EB" />
+                                <Setter Property="BorderBrush" Value="#D1D5DB" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Priority}" Value="{x:Null}">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Priority.Length}" Value="0">
                                         <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Priority}" Value="最高">
+                                        <Setter Property="Background" Value="#FEE2E2" />
+                                        <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Priority}" Value="较高">
+                                        <Setter Property="Background" Value="#FFEDD5" />
+                                        <Setter Property="BorderBrush" Value="#FDBA74" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Priority}" Value="普通">
+                                        <Setter Property="Background" Value="#FEF3C7" />
+                                        <Setter Property="BorderBrush" Value="#FDE68A" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Priority}" Value="较低">
+                                        <Setter Property="Background" Value="#E0F2FE" />
+                                        <Setter Property="BorderBrush" Value="#93C5FD" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Priority}" Value="最低">
+                                        <Setter Property="Background" Value="#DCFCE7" />
+                                        <Setter Property="BorderBrush" Value="#86EFAC" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

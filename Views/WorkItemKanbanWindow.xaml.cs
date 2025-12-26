@@ -222,26 +222,80 @@ namespace PackageManager.Views
         private void BuildColumns(IEnumerable<PingCodeApiService.WorkItemInfo> items)
         {
             var order = new[] { "未开始", "进行中", "可测试", "测试中", "已完成", "已关闭" };
-            var cols = new List<KanbanColumn>();
-            foreach (var cat in order)
-            {
-                var col = new KanbanColumn { Title = cat };
-                foreach (var it in items.Where(i => string.Equals(i.StateCategory ?? "", cat, StringComparison.OrdinalIgnoreCase)))
-                {
-                    col.Items.Add(it);
-                }
-                cols.Add(col);
-            }
+            var desiredTitles = new List<string>(order);
             foreach (var g in items.GroupBy(i => i.StateCategory).Where(g => !order.Contains(g.Key ?? "", StringComparer.OrdinalIgnoreCase)))
             {
-                var col = new KanbanColumn { Title = string.IsNullOrWhiteSpace(g.Key) ? "其他" : g.Key };
-                foreach (var it in g)
+                var t = string.IsNullOrWhiteSpace(g.Key) ? "其他" : g.Key;
+                if (!desiredTitles.Contains(t, StringComparer.OrdinalIgnoreCase))
                 {
-                    col.Items.Add(it);
+                    desiredTitles.Add(t);
                 }
-                cols.Add(col);
             }
-            Columns = new ObservableCollection<KanbanColumn>(cols);
+            
+            if (Columns == null) Columns = new ObservableCollection<KanbanColumn>();
+            
+            foreach (var t in desiredTitles)
+            {
+                if (!Columns.Any(c => string.Equals(c.Title, t, StringComparison.OrdinalIgnoreCase)))
+                {
+                    Columns.Add(new KanbanColumn { Title = t });
+                }
+            }
+            var toRemove = Columns.Where(c => !desiredTitles.Contains(c.Title ?? "", StringComparer.OrdinalIgnoreCase)).ToList();
+            foreach (var r in toRemove)
+            {
+                Columns.Remove(r);
+            }
+            for (int i = 0; i < desiredTitles.Count; i++)
+            {
+                var t = desiredTitles[i];
+                var idx = Columns.ToList().FindIndex(c => string.Equals(c.Title, t, StringComparison.OrdinalIgnoreCase));
+                if (idx >= 0 && idx != i)
+                {
+                    Columns.Move(idx, i);
+                }
+            }
+            foreach (var col in Columns)
+            {
+                var title = col.Title ?? "";
+                List<PingCodeApiService.WorkItemInfo> target;
+                if (order.Contains(title, StringComparer.OrdinalIgnoreCase))
+                {
+                    target = items.Where(i => string.Equals(i.StateCategory ?? "", title, StringComparison.OrdinalIgnoreCase)).ToList();
+                }
+                else
+                {
+                    if (string.Equals(title, "其他", StringComparison.OrdinalIgnoreCase))
+                    {
+                        target = items.Where(i => string.IsNullOrWhiteSpace(i.StateCategory)).ToList();
+                    }
+                    else
+                    {
+                        target = items.Where(i => string.Equals(i.StateCategory ?? "", title, StringComparison.OrdinalIgnoreCase)).ToList();
+                    }
+                }
+                
+                var existing = new HashSet<string>(col.Items.Select(x => x?.Id ?? x?.Identifier ?? ""), StringComparer.OrdinalIgnoreCase);
+                var desired = new HashSet<string>(target.Select(x => x?.Id ?? x?.Identifier ?? ""), StringComparer.OrdinalIgnoreCase);
+                
+                foreach (var it in col.Items.ToList())
+                {
+                    var key = it?.Id ?? it?.Identifier ?? "";
+                    if (!desired.Contains(key))
+                    {
+                        col.Items.Remove(it);
+                    }
+                }
+                foreach (var it in target)
+                {
+                    var key = it?.Id ?? it?.Identifier ?? "";
+                    if (!existing.Contains(key))
+                    {
+                        col.Items.Add(it);
+                    }
+                }
+                col.UpdateCountAndTotalPoints();
+            }
         }
         
         private void MemberCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { }
