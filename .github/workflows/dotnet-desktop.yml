@@ -10,11 +10,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       
-    - name: Setup .NET Framework build tools
+    - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.2
       with:
-        vs-version: '2022'
-        
+        vs-version: '17.0'  # 或 '16.0'，而不是 '2022'
+        msbuild-architecture: x64  # 建议使用 x64
+    
     - name: Setup NuGet
       uses: nuget/setup-nuget@v1
       
