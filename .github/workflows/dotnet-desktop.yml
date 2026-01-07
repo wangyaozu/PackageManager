@@ -10,6 +10,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       
+    - name: Setup .NET Framework build tools
+      uses: microsoft/setup-msbuild@v2
+      
     - name: Setup NuGet
       uses: nuget/setup-nuget@v1
       
@@ -18,7 +21,7 @@ jobs:
       
     - name: Build
       run: |
-        "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe" PackageManager.sln `
+        msbuild PackageManager.sln `
           /p:Configuration=Release `
           /p:Platform="Any CPU" `
           /p:TargetFrameworkVersion=v4.7 `
