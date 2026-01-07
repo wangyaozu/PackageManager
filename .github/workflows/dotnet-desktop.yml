@@ -1,24 +1,31 @@
-name: .NET Framework 4.7 Container Build
+name: Build .NET Framework without Docker
 
-on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-latest  # 必须用 Windows，因为 .NET Framework 需要 Windows
+    runs-on: windows-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
       
-    - name: Build with .NET Framework SDK 4.7.2
+    - name: Setup .NET Framework build tools
+      uses: microsoft/setup-msbuild@v1.2
+      with:
+        vs-version: '2022'
+        
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v1
+      
+    - name: Restore packages
+      run: nuget restore PackageManager.sln
+      
+    - name: Build
       run: |
-        docker run --rm `
-          -v "${PWD}:C:\src" `
-          -w C:\src `
-          mcr.microsoft.com/dotnet/framework/sdk:4.7.2 `
-          msbuild PackageManager.sln /p:Configuration=Release /p:Platform="Any CPU"
-      shell: powershell
+        msbuild PackageManager.sln `
+          /p:Configuration=Release `
+          /p:Platform="Any CPU" `
+          /p:TargetFrameworkVersion=v4.7 `
+          /maxcpucount `
+          /verbosity:minimal
