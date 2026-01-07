@@ -17,11 +17,11 @@ jobs:
       uses: nuget/setup-nuget@v1
       
     - name: Restore packages
-      run: nuget restore PackageManager.sln
+      run: nuget restore ${PWD}/PackageManager.sln
       
     - name: Build
       run: |
-        msbuild PackageManager.sln `
+        msbuild ${PWD}/PackageManager.sln `
           /p:Configuration=Release `
           /p:Platform="Any CPU" `
           /p:TargetFrameworkVersion=v4.7 `
