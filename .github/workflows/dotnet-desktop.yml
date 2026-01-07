@@ -10,12 +10,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.2
-      with:
-        vs-version: '17.0'  # 或 '16.0'，而不是 '2022'
-        msbuild-architecture: x64  # 建议使用 x64
-    
     - name: Setup NuGet
       uses: nuget/setup-nuget@v1
       
@@ -24,7 +18,7 @@ jobs:
       
     - name: Build
       run: |
-        msbuild PackageManager.sln `
+        "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe" PackageManager.sln `
           /p:Configuration=Release `
           /p:Platform="Any CPU" `
           /p:TargetFrameworkVersion=v4.7 `
