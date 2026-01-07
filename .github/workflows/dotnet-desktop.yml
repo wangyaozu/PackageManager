@@ -17,8 +17,8 @@ jobs:
     - name: Build with .NET Framework SDK 4.7.2
       run: |
         docker run --rm `
-          -v ${PWD}:/src `
-          -w /src `
+          -v "${PWD}:C:\src" `
+          -w C:\src `
           mcr.microsoft.com/dotnet/framework/sdk:4.7.2 `
           msbuild PackageManager.sln /p:Configuration=Release /p:Platform="Any CPU"
       shell: powershell
