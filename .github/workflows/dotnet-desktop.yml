@@ -1,0 +1,24 @@
+name: .NET Framework 4.7 Container Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest  # 必须用 Windows，因为 .NET Framework 需要 Windows
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build with .NET Framework SDK 4.7.2
+      run: |
+        docker run --rm `
+          -v ${PWD}:/src `
+          -w /src `
+          mcr.microsoft.com/dotnet/framework/sdk:4.7.2 `
+          msbuild PackageManager.sln /p:Configuration=Release /p:Platform="Any CPU"
+      shell: powershell
